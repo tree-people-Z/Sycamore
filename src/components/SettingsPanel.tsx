@@ -1,0 +1,354 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { X, Type, Maximize, Save, RotateCcw, WrapText, Keyboard } from 'lucide-react'
+import { SETTINGS_KEY, DEFAULT_SETTINGS } from '../constants'
+
+export type ShortcutAction =
+  | 'bold' | 'italic' | 'strikethrough' | 'highlight' | 'code' | 'link'
+  | 'save' | 'newFile' | 'openFile' | 'saveAs' | 'undo' | 'redo'
+  | 'exportHtml' | 'exportPdf'
+
+export interface EditorSettings {
+  fontSize: number
+  editorWidth: number
+  autoSave: boolean
+  autoSaveInterval: number
+  lineWrapping: boolean
+  keybindings?: Record<ShortcutAction, string>
+}
+
+const DEFAULT_KEYBINDINGS: Record<ShortcutAction, string> = {
+  bold: 'CmdOrCtrl+B',
+  italic: 'CmdOrCtrl+I',
+  strikethrough: 'CmdOrCtrl+Shift+X',
+  highlight: 'CmdOrCtrl+Shift+H',
+  code: 'CmdOrCtrl+E',
+  link: 'CmdOrCtrl+K',
+  save: 'CmdOrCtrl+S',
+  newFile: 'CmdOrCtrl+N',
+  openFile: 'CmdOrCtrl+O',
+  saveAs: 'CmdOrCtrl+Shift+S',
+  undo: 'CmdOrCtrl+Z',
+  redo: 'CmdOrCtrl+Shift+Z',
+  exportHtml: 'CmdOrCtrl+Shift+H',
+  exportPdf: 'CmdOrCtrl+Shift+P',
+}
+
+const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
+  bold: '加粗', italic: '斜体', strikethrough: '删除线',
+  highlight: '高亮', code: '行内代码', link: '链接',
+  save: '保存', newFile: '新建', openFile: '打开',
+  saveAs: '另存为', undo: '撤销', redo: '重做',
+  exportHtml: '导出 HTML', exportPdf: '导出 PDF',
+}
+
+const FULL_DEFAULTS: EditorSettings = { ...DEFAULT_SETTINGS, keybindings: { ...DEFAULT_KEYBINDINGS } } as EditorSettings
+
+export function loadSettings(): EditorSettings {
+  try {
+    const saved = localStorage.getItem(SETTINGS_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      return { ...FULL_DEFAULTS, ...parsed, keybindings: { ...DEFAULT_KEYBINDINGS, ...(parsed.keybindings || {}) } }
+    }
+  } catch { /* ignore */ }
+  return { ...FULL_DEFAULTS }
+}
+
+export function saveSettings(settings: EditorSettings) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) }
+  catch { /* ignore */ }
+}
+
+interface SettingsPanelProps {
+  settings: EditorSettings
+  onChange: (settings: EditorSettings) => void
+  onClose: () => void
+}
+
+function ResetBtn({ onReset, show }: { onReset: () => void; show: boolean }) {
+  if (!show) return null
+  return (
+    <button
+      onClick={onReset}
+      className="w-5 h-5 flex items-center justify-center text-[#aeaeb2] hover:text-[#007aff] dark:hover:text-[#0a84ff] transition-colors"
+      title="恢复默认"
+    >
+      <RotateCcw size={12} />
+    </button>
+  )
+}
+
+function formatShortcut(key: string): string {
+  const isMac = navigator.platform.includes('Mac')
+  return key
+    .replace(/CmdOrCtrl/g, isMac ? '⌘' : 'Ctrl+')
+    .replace(/Cmd/g, isMac ? '⌘' : 'Ctrl+')
+    .replace(/Ctrl/g, 'Ctrl+')
+    .replace(/Shift/g, isMac ? '⇧' : 'Shift+')
+    .replace(/Alt/g, isMac ? '⌥' : 'Alt+')
+    .replace(/\++/g, '+')
+    .replace(/\+$/, '')
+}
+
+function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
+  const [localSettings, setLocalSettings] = useState<EditorSettings>(settings)
+  const [recording, setRecording] = useState<ShortcutAction | null>(null)
+  const recordingRef = useRef<ShortcutAction | null>(null)
+
+  useEffect(() => {
+    recordingRef.current = recording
+  }, [recording])
+
+  const updateSetting = useCallback(<K extends keyof EditorSettings>(key: K, value: EditorSettings[K]) => {
+    const updated = { ...localSettings, [key]: value }
+    setLocalSettings(updated)
+    onChange(updated)
+  }, [localSettings, onChange])
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const action = recordingRef.current
+    if (!action) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const parts: string[] = []
+    if (e.metaKey) parts.push('Cmd')
+    else if (e.ctrlKey) parts.push('Ctrl')
+    if (e.shiftKey) parts.push('Shift')
+    if (e.altKey) parts.push('Alt')
+
+    const key = e.key
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) return
+    if (!parts.length && key.length === 1 && key.match(/[a-z0-9]/i)) {
+      return
+    }
+
+    let keyName = key
+    if (key === ' ') keyName = 'Space'
+    else if (key.length === 1) keyName = key.toUpperCase()
+
+    parts.push(keyName)
+    const shortcut = parts.join('+')
+
+    updateSetting('keybindings', { ...(localSettings.keybindings || {}) as Record<ShortcutAction, string>, [action]: shortcut })
+    setRecording(null)
+    recordingRef.current = null
+  }, [localSettings, updateSetting])
+
+  useEffect(() => {
+    if (!recording) return
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [recording, handleKeyDown])
+
+  const resetSetting = useCallback(<K extends keyof EditorSettings>(key: K) => {
+    updateSetting(key, FULL_DEFAULTS[key])
+  }, [updateSetting])
+
+  const resetAll = () => {
+    setLocalSettings(FULL_DEFAULTS)
+    onChange(FULL_DEFAULTS)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dialog-overlay">
+      <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[420px] max-h-[80vh] overflow-y-auto dialog-panel">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
+          <h2 className="text-sm font-semibold text-[var(--color-text)]">设置</h2>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded-md transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 space-y-5">
+          {/* Font Size */}
+          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+            <div className="flex items-center gap-2 mb-2">
+              <Type size={14} className="text-[var(--color-accent)]" />
+              <label className="text-xs font-medium text-[var(--color-text)]">字体大小</label>
+              <ResetBtn show={localSettings.fontSize !== FULL_DEFAULTS.fontSize} onReset={() => resetSetting('fontSize')} />
+              <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.fontSize}px</span>
+            </div>
+            <input
+              type="range"
+              min="12"
+              max="28"
+              step="1"
+              value={localSettings.fontSize}
+              onChange={e => updateSetting('fontSize', parseInt(e.target.value))}
+              className="w-full h-1.5 bg-[var(--color-border)] rounded-full appearance-none cursor-pointer accent-[var(--color-accent)]"
+            />
+            <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
+              <span>12px</span>
+              <span>28px</span>
+            </div>
+          </div>
+
+          {/* Editor Width */}
+          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+            <div className="flex items-center gap-2 mb-2">
+              <Maximize size={14} className="text-[var(--color-accent)]" />
+              <label className="text-xs font-medium text-[var(--color-text)]">编辑器宽度</label>
+              <ResetBtn show={localSettings.editorWidth !== FULL_DEFAULTS.editorWidth} onReset={() => resetSetting('editorWidth')} />
+              <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.editorWidth}px</span>
+            </div>
+            <input
+              type="range"
+              min="600"
+              max="1200"
+              step="50"
+              value={localSettings.editorWidth}
+              onChange={e => updateSetting('editorWidth', parseInt(e.target.value))}
+              className="w-full h-1.5 bg-[var(--color-border)] rounded-full appearance-none cursor-pointer accent-[var(--color-accent)]"
+            />
+            <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
+              <span>600px</span>
+              <span>1200px</span>
+            </div>
+          </div>
+
+          {/* Auto Save */}
+          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Save size={14} className="text-[var(--color-accent)]" />
+                <label className="text-xs font-medium text-[var(--color-text)]">自动保存</label>
+                <ResetBtn show={localSettings.autoSave !== FULL_DEFAULTS.autoSave} onReset={() => resetSetting('autoSave')} />
+              </div>
+              <button
+                onClick={() => updateSetting('autoSave', !localSettings.autoSave)}
+                className={`w-10 h-5 rounded-full transition-colors relative ${
+                  localSettings.autoSave ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
+                    localSettings.autoSave ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Auto Save Interval */}
+            {localSettings.autoSave && (
+              <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-xs text-[var(--color-text-secondary)]">保存间隔</label>
+                  <ResetBtn show={localSettings.autoSaveInterval !== FULL_DEFAULTS.autoSaveInterval} onReset={() => resetSetting('autoSaveInterval')} />
+                </div>
+                <div className="flex gap-2">
+                  {[5, 15, 30, 60].map(interval => (
+                    <button
+                      key={interval}
+                      onClick={() => updateSetting('autoSaveInterval', interval)}
+                      className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${
+                        localSettings.autoSaveInterval === interval
+                          ? 'bg-[var(--color-accent)] text-white'
+                          : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] border border-[var(--color-border)]'
+                      }`}
+                    >
+                      {interval}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Line Wrapping */}
+          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <WrapText size={14} className="text-[var(--color-accent)]" />
+                <label className="text-xs font-medium text-[var(--color-text)]">自动换行</label>
+                <ResetBtn show={localSettings.lineWrapping !== FULL_DEFAULTS.lineWrapping} onReset={() => resetSetting('lineWrapping')} />
+              </div>
+              <button
+                onClick={() => updateSetting('lineWrapping', !localSettings.lineWrapping)}
+                className={`w-10 h-5 rounded-full transition-colors relative ${
+                  localSettings.lineWrapping ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
+                    localSettings.lineWrapping ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Keyboard Shortcuts */}
+          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+            <div className="flex items-center gap-2 mb-3">
+              <Keyboard size={14} className="text-[var(--color-accent)]" />
+              <label className="text-xs font-medium text-[var(--color-text)]">快捷键</label>
+              <ResetBtn
+                show={Object.keys(DEFAULT_KEYBINDINGS).some(k =>
+                  (localSettings.keybindings || {})[k as ShortcutAction] !== DEFAULT_KEYBINDINGS[k as ShortcutAction]
+                )}
+                onReset={() => {
+                  const updated = { ...localSettings, keybindings: { ...DEFAULT_KEYBINDINGS } }
+                  setLocalSettings(updated)
+                  onChange(updated)
+                }}
+              />
+            </div>
+            <div className="space-y-0.5">
+              {Object.entries(SHORTCUT_LABELS).map(([action, label]) => {
+                const isRecording = recording === action
+                const shortcut = (localSettings.keybindings || {})[action as ShortcutAction]
+                return (
+                  <div
+                    key={action}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                      isRecording
+                        ? 'bg-[var(--color-accent-10)] ring-1 ring-[var(--color-accent)]'
+                        : 'hover:bg-[var(--color-surface)]'
+                    }`}
+                    onClick={() => {
+                      if (isRecording) { setRecording(null); return }
+                      setRecording(action as ShortcutAction)
+                    }}
+                  >
+                    <span className="text-xs text-[var(--color-text)]">{label}</span>
+                    <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+                      isRecording
+                        ? 'text-[var(--color-accent)] animate-pulse'
+                        : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+                    }`}>
+                      {isRecording ? '按下快捷键...' : formatShortcut(shortcut || '')}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
+          <button
+            onClick={resetAll}
+            className="px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-danger)] hover:border-[var(--color-danger)] transition-colors"
+          >
+            恢复默认
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 text-xs rounded-lg bg-[var(--color-accent)] text-white hover:opacity-80 transition-opacity"
+          >
+            完成
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default SettingsPanel
