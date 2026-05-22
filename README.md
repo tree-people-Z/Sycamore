@@ -1,6 +1,7 @@
-<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004611" src="https://github.com/user-attachments/assets/9b7e46c9-393f-476a-9135-4722c31002e4" />
-<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004640" src="https://github.com/user-attachments/assets/70e75eca-66d7-44c2-be3a-f611f5e4fd14" />
-<img width="1920" height="1050" alt="屏幕截图 2026-05-23 005544" src="https://github.com/user-attachments/assets/f91d3b01-b49b-4958-b31d-690b5038d25d" />
+<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004611" src="https://github.com/user-attachments/assets/c4a65289-88fa-46ea-a70e-9ed5a5954db6" />
+<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004628" src="https://github.com/user-attachments/assets/2fd075d5-3f4a-4119-bba1-4f755c7dc29d" />
+<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004640" src="https://github.com/user-attachments/assets/f0411617-4fb7-4386-9dc7-facdc20dd353" />
+<img width="1920" height="1050" alt="屏幕截图 2026-05-23 005544" src="https://github.com/user-attachments/assets/426ff2b8-8f89-44bc-a858-e31eb6742451" />
 # Sycamore
 
 一个基于 Electron + React + Tiptap 的现代化桌面 Markdown 编辑器，提供流畅的富文本编辑体验，支持表格、代码高亮、LaTeX 公式等功能。
