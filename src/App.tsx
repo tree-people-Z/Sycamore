@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Feather } from 'lucide-react'
+import { Leaf } from 'lucide-react'
 import Editor, { type EditorHandle } from './editor/Editor'
 import WindowControls from './components/WindowControls'
 import WelcomePage from './components/WelcomePage'
@@ -234,7 +234,7 @@ function App() {
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
         <div className="flex-1" />
         <div className="flex items-center justify-center gap-2 absolute left-1/2 -translate-x-1/2">
-          <Feather size={13} className="text-[var(--color-accent)]" />
+          <Leaf size={13} className="text-[var(--color-accent)]" />
           <span className="text-xs text-[var(--color-text-secondary)] select-none font-medium tracking-wide">Sycamore</span>
         </div>
         <div className="h-full flex" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>

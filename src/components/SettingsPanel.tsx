@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Type, Maximize, Save, RotateCcw, WrapText, Keyboard } from 'lucide-react'
+import { X, Type, Maximize, Save, RotateCcw, WrapText, Keyboard, Leaf } from 'lucide-react'
 import { SETTINGS_KEY, DEFAULT_SETTINGS } from '../constants'
 
 export type ShortcutAction =
@@ -65,6 +65,15 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
+type TabKey = 'editor' | 'save' | 'shortcuts' | 'about'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'editor', label: '排版' },
+  { key: 'save', label: '保存' },
+  { key: 'shortcuts', label: '快捷键' },
+  { key: 'about', label: '关于' },
+]
+
 function ResetBtn({ onReset, show }: { onReset: () => void; show: boolean }) {
   if (!show) return null
   return (
@@ -93,6 +102,7 @@ function formatShortcut(key: string): string {
 function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
   const [localSettings, setLocalSettings] = useState<EditorSettings>(settings)
   const [recording, setRecording] = useState<ShortcutAction | null>(null)
+  const [activeTab, setActiveTab] = useState<TabKey>('editor')
   const recordingRef = useRef<ShortcutAction | null>(null)
 
   useEffect(() => {
@@ -152,7 +162,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dialog-overlay">
-      <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[420px] max-h-[80vh] overflow-y-auto dialog-panel">
+      <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[420px] max-h-[80vh] flex flex-col dialog-panel">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">设置</h2>
@@ -164,181 +174,282 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-[var(--color-border)]">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-2.5 text-xs font-medium transition-colors relative ${
+                activeTab === tab.key
+                  ? 'text-[var(--color-accent)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.key && (
+                <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[var(--color-accent)] rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Content */}
-        <div className="p-5 space-y-5">
-          {/* Font Size */}
-          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
-            <div className="flex items-center gap-2 mb-2">
-              <Type size={14} className="text-[var(--color-accent)]" />
-              <label className="text-xs font-medium text-[var(--color-text)]">字体大小</label>
-              <ResetBtn show={localSettings.fontSize !== FULL_DEFAULTS.fontSize} onReset={() => resetSetting('fontSize')} />
-              <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.fontSize}px</span>
-            </div>
-            <input
-              type="range"
-              min="12"
-              max="28"
-              step="1"
-              value={localSettings.fontSize}
-              onChange={e => updateSetting('fontSize', parseInt(e.target.value))}
-              className="w-full h-1.5 bg-[var(--color-border)] rounded-full appearance-none cursor-pointer accent-[var(--color-accent)]"
-            />
-            <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
-              <span>12px</span>
-              <span>28px</span>
-            </div>
-          </div>
+        <div className="flex-1 overflow-y-auto p-5">
 
-          {/* Editor Width */}
-          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
-            <div className="flex items-center gap-2 mb-2">
-              <Maximize size={14} className="text-[var(--color-accent)]" />
-              <label className="text-xs font-medium text-[var(--color-text)]">编辑器宽度</label>
-              <ResetBtn show={localSettings.editorWidth !== FULL_DEFAULTS.editorWidth} onReset={() => resetSetting('editorWidth')} />
-              <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.editorWidth}px</span>
-            </div>
-            <input
-              type="range"
-              min="600"
-              max="1200"
-              step="50"
-              value={localSettings.editorWidth}
-              onChange={e => updateSetting('editorWidth', parseInt(e.target.value))}
-              className="w-full h-1.5 bg-[var(--color-border)] rounded-full appearance-none cursor-pointer accent-[var(--color-accent)]"
-            />
-            <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
-              <span>600px</span>
-              <span>1200px</span>
-            </div>
-          </div>
-
-          {/* Auto Save */}
-          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Save size={14} className="text-[var(--color-accent)]" />
-                <label className="text-xs font-medium text-[var(--color-text)]">自动保存</label>
-                <ResetBtn show={localSettings.autoSave !== FULL_DEFAULTS.autoSave} onReset={() => resetSetting('autoSave')} />
-              </div>
-              <button
-                onClick={() => updateSetting('autoSave', !localSettings.autoSave)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${
-                  localSettings.autoSave ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
-                    localSettings.autoSave ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Auto Save Interval */}
-            {localSettings.autoSave && (
-              <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-xs text-[var(--color-text-secondary)]">保存间隔</label>
-                  <ResetBtn show={localSettings.autoSaveInterval !== FULL_DEFAULTS.autoSaveInterval} onReset={() => resetSetting('autoSaveInterval')} />
+            {/* ── 排版 ── */}
+            <div
+              className="grid transition-[grid-template-rows] duration-300 ease-out"
+              style={{ gridTemplateRows: activeTab === 'editor' ? '1fr' : '0fr' }}
+            >
+              <div className={`overflow-hidden transition-opacity duration-300 ${
+                activeTab === 'editor' ? 'opacity-100' : 'opacity-0'
+              }`}>
+              <div className="space-y-3">
+                <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Type size={14} className="text-[var(--color-accent)]" />
+                    <label className="text-xs font-medium text-[var(--color-text)]">字体大小</label>
+                    <ResetBtn show={localSettings.fontSize !== FULL_DEFAULTS.fontSize} onReset={() => resetSetting('fontSize')} />
+                    <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.fontSize}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="12"
+                    max="28"
+                    step="1"
+                    value={localSettings.fontSize}
+                    onChange={e => updateSetting('fontSize', parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-[var(--color-border)] rounded-full appearance-none cursor-pointer accent-[var(--color-accent)]"
+                  />
+                  <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
+                    <span>12px</span>
+                    <span>28px</span>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {[5, 15, 30, 60].map(interval => (
+
+                <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Maximize size={14} className="text-[var(--color-accent)]" />
+                    <label className="text-xs font-medium text-[var(--color-text)]">编辑器宽度</label>
+                    <ResetBtn show={localSettings.editorWidth !== FULL_DEFAULTS.editorWidth} onReset={() => resetSetting('editorWidth')} />
+                    <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.editorWidth}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="600"
+                    max="1200"
+                    step="50"
+                    value={localSettings.editorWidth}
+                    onChange={e => updateSetting('editorWidth', parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-[var(--color-border)] rounded-full appearance-none cursor-pointer accent-[var(--color-accent)]"
+                  />
+                  <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
+                    <span>600px</span>
+                    <span>1200px</span>
+                  </div>
+                </div>
+
+                <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <WrapText size={14} className="text-[var(--color-accent)]" />
+                      <label className="text-xs font-medium text-[var(--color-text)]">自动换行</label>
+                      <ResetBtn show={localSettings.lineWrapping !== FULL_DEFAULTS.lineWrapping} onReset={() => resetSetting('lineWrapping')} />
+                    </div>
                     <button
-                      key={interval}
-                      onClick={() => updateSetting('autoSaveInterval', interval)}
-                      className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${
-                        localSettings.autoSaveInterval === interval
-                          ? 'bg-[var(--color-accent)] text-white'
-                          : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] border border-[var(--color-border)]'
+                      onClick={() => updateSetting('lineWrapping', !localSettings.lineWrapping)}
+                      className={`w-10 h-5 rounded-full transition-colors relative ${
+                        localSettings.lineWrapping ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'
                       }`}
                     >
-                      {interval}s
+                      <div
+                        className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
+                          localSettings.lineWrapping ? 'translate-x-5' : 'translate-x-0.5'
+                        }`}
+                      />
                     </button>
-                  ))}
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Line Wrapping */}
-          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <WrapText size={14} className="text-[var(--color-accent)]" />
-                <label className="text-xs font-medium text-[var(--color-text)]">自动换行</label>
-                <ResetBtn show={localSettings.lineWrapping !== FULL_DEFAULTS.lineWrapping} onReset={() => resetSetting('lineWrapping')} />
               </div>
-              <button
-                onClick={() => updateSetting('lineWrapping', !localSettings.lineWrapping)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${
-                  localSettings.lineWrapping ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
-                    localSettings.lineWrapping ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
             </div>
-          </div>
 
-          {/* Keyboard Shortcuts */}
-          <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
-            <div className="flex items-center gap-2 mb-3">
-              <Keyboard size={14} className="text-[var(--color-accent)]" />
-              <label className="text-xs font-medium text-[var(--color-text)]">快捷键</label>
-              <ResetBtn
-                show={Object.keys(DEFAULT_KEYBINDINGS).some(k =>
-                  (localSettings.keybindings || {})[k as ShortcutAction] !== DEFAULT_KEYBINDINGS[k as ShortcutAction]
-                )}
-                onReset={() => {
-                  const updated = { ...localSettings, keybindings: { ...DEFAULT_KEYBINDINGS } }
-                  setLocalSettings(updated)
-                  onChange(updated)
-                }}
-              />
-            </div>
-            <div className="space-y-0.5">
-              {Object.entries(SHORTCUT_LABELS).map(([action, label]) => {
-                const isRecording = recording === action
-                const shortcut = (localSettings.keybindings || {})[action as ShortcutAction]
-                return (
-                  <div
-                    key={action}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                      isRecording
-                        ? 'bg-[var(--color-accent-10)] ring-1 ring-[var(--color-accent)]'
-                        : 'hover:bg-[var(--color-surface)]'
-                    }`}
-                    onClick={() => {
-                      if (isRecording) { setRecording(null); return }
-                      setRecording(action as ShortcutAction)
-                    }}
-                  >
-                    <span className="text-xs text-[var(--color-text)]">{label}</span>
-                    <span className={`text-xs font-mono px-2 py-0.5 rounded ${
-                      isRecording
-                        ? 'text-[var(--color-accent)] animate-pulse'
-                        : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
-                    }`}>
-                      {isRecording ? '按下快捷键...' : formatShortcut(shortcut || '')}
-                    </span>
+            {/* ── 保存 ── */}
+            <div
+              className="grid transition-[grid-template-rows] duration-300 ease-out"
+              style={{ gridTemplateRows: activeTab === 'save' ? '1fr' : '0fr' }}
+            >
+              <div className={`overflow-hidden transition-opacity duration-300 ${
+                activeTab === 'save' ? 'opacity-100' : 'opacity-0'
+              }`}>
+              <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Save size={14} className="text-[var(--color-accent)]" />
+                    <label className="text-xs font-medium text-[var(--color-text)]">自动保存</label>
+                    <ResetBtn show={localSettings.autoSave !== FULL_DEFAULTS.autoSave} onReset={() => resetSetting('autoSave')} />
                   </div>
-                )
-              })}
+                  <button
+                    onClick={() => updateSetting('autoSave', !localSettings.autoSave)}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${
+                      localSettings.autoSave ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
+                        localSettings.autoSave ? 'translate-x-5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {localSettings.autoSave && (
+                  <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <label className="text-xs text-[var(--color-text-secondary)]">保存间隔</label>
+                      <ResetBtn show={localSettings.autoSaveInterval !== FULL_DEFAULTS.autoSaveInterval} onReset={() => resetSetting('autoSaveInterval')} />
+                    </div>
+                    <div className="flex gap-2">
+                      {[5, 15, 30, 60].map(interval => (
+                        <button
+                          key={interval}
+                          onClick={() => updateSetting('autoSaveInterval', interval)}
+                          className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${
+                            localSettings.autoSaveInterval === interval
+                              ? 'bg-[var(--color-accent)] text-white'
+                              : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] border border-[var(--color-border)]'
+                          }`}
+                        >
+                          {interval}s
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              </div>
             </div>
-          </div>
+
+            {/* ── 快捷键 ── */}
+            <div
+              className="grid transition-[grid-template-rows] duration-300 ease-out"
+              style={{ gridTemplateRows: activeTab === 'shortcuts' ? '1fr' : '0fr' }}
+            >
+              <div className={`overflow-hidden transition-opacity duration-300 ${
+                activeTab === 'shortcuts' ? 'opacity-100' : 'opacity-0'
+              }`}>
+              <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
+                <div className="flex items-center gap-2 mb-3">
+                  <Keyboard size={14} className="text-[var(--color-accent)]" />
+                  <label className="text-xs font-medium text-[var(--color-text)]">快捷键</label>
+                  <ResetBtn
+                    show={Object.keys(DEFAULT_KEYBINDINGS).some(k =>
+                      (localSettings.keybindings || {})[k as ShortcutAction] !== DEFAULT_KEYBINDINGS[k as ShortcutAction]
+                    )}
+                    onReset={() => {
+                      const updated = { ...localSettings, keybindings: { ...DEFAULT_KEYBINDINGS } }
+                      setLocalSettings(updated)
+                      onChange(updated)
+                    }}
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  {Object.entries(SHORTCUT_LABELS).map(([action, label]) => {
+                    const isRecording = recording === action
+                    const shortcut = (localSettings.keybindings || {})[action as ShortcutAction]
+                    return (
+                      <div
+                        key={action}
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                          isRecording
+                            ? 'bg-[var(--color-accent-10)] ring-1 ring-[var(--color-accent)]'
+                            : 'hover:bg-[var(--color-surface)]'
+                        }`}
+                        onClick={() => {
+                          if (isRecording) { setRecording(null); return }
+                          setRecording(action as ShortcutAction)
+                        }}
+                      >
+                        <span className="text-xs text-[var(--color-text)]">{label}</span>
+                        <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+                          isRecording
+                            ? 'text-[var(--color-accent)] animate-pulse'
+                            : 'text-[var(--color-text-secondary)] bg-[var(--color-surface)] border border-[var(--color-border)]'
+                        }`}>
+                          {isRecording ? '按下快捷键...' : formatShortcut(shortcut || '')}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              </div>
+            </div>
+
+            {/* ── 关于 ── */}
+            <div
+              className="grid transition-[grid-template-rows] duration-300 ease-out"
+              style={{ gridTemplateRows: activeTab === 'about' ? '1fr' : '0fr' }}
+            >
+              <div className={`overflow-hidden transition-opacity duration-300 ${
+                activeTab === 'about' ? 'opacity-100' : 'opacity-0'
+              }`}>
+              <div className="flex flex-col items-center py-6">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-alt)] flex items-center justify-center mb-4 shadow-lg" style={{ boxShadow: '0 8px 30px var(--color-accent-10)' }}>
+                  <Leaf size={26} className="text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-[var(--color-text)] mb-0.5">Sycamore</h3>
+                <p className="text-xs text-[var(--color-text-muted)] mb-6">v1.0.0</p>
+
+                <div className="w-full bg-[var(--color-bg)] rounded-xl border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-xs text-[var(--color-text-secondary)]">作者</span>
+                    <span className="text-xs text-[var(--color-text)] font-medium">Tree people</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-xs text-[var(--color-text-secondary)]">GitHub</span>
+                    <a
+                      href="https://github.com/tree-people-Z"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[var(--color-accent)] hover:underline flex items-center gap-1"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      @tree-people-Z
+                    </a>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-xs text-[var(--color-text-secondary)]">项目地址</span>
+                    <a
+                      href="https://github.com/tree-people-Z/Sycamore"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[var(--color-accent)] hover:underline flex items-center gap-1"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      tree-people-Z/Sycamore
+                    </a>
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+
         </div>
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
-          <button
-            onClick={resetAll}
-            className="px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-danger)] hover:border-[var(--color-danger)] transition-colors"
-          >
-            恢复默认
-          </button>
+          {activeTab !== 'about' ? (
+            <button
+              onClick={resetAll}
+              className="px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-danger)] hover:border-[var(--color-danger)] transition-colors"
+            >
+              恢复默认
+            </button>
+          ) : (
+            <div />
+          )}
           <button
             onClick={onClose}
             className="px-4 py-1.5 text-xs rounded-lg bg-[var(--color-accent)] text-white hover:opacity-80 transition-opacity"
