@@ -10,7 +10,36 @@
     "preview": "vite preview",
     "electron:dev": "npm run build && electron .",
     "lint": "eslint src --ext .ts,.tsx",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "pack": "npm run build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.sycamore.markdown-editor",
+    "productName": "Sycamore",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   },
   "dependencies": {
     "@tiptap/extension-code-block-lowlight": "^3.23.6",
@@ -46,10 +75,14 @@
     "autoprefixer": "^10.4.17",
     "concurrently": "^8.2.2",
     "electron": "^33.4.11",
+    "electron-builder": "^26.8.1",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.2",
+    "icojs": "^1.0.0",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.4.33",
     "prettier": "^3.2.5",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.21",

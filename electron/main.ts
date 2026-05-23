@@ -47,6 +47,7 @@ function createWindow() {
     frame: false,
     title: 'Sycamore',
     titleBarStyle: 'hidden',
+    icon: path.join(__dirname, '../build-assets/icon.ico'),
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: -100, y: -100 } }
       : { backgroundColor: '#f5f5f7' }),
