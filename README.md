@@ -4,7 +4,7 @@
 <img width="1920" height="1050" alt="屏幕截图 2026-05-23 005544" src="https://github.com/user-attachments/assets/426ff2b8-8f89-44bc-a858-e31eb6742451" />
 # Sycamore
 
-一个基于 Electron + React + Tiptap 的现代化桌面 Markdown 编辑器，提供流畅的富文本编辑体验，支持表格、代码高亮、LaTeX 公式等功能。
+一个基于 Electron + React + Tiptap 的现代化桌面富文本编辑器，提供流畅的所见即所得编辑体验，支持表格、代码高亮、LaTeX 公式等功能。
 
 ## 功能特性
 
