@@ -13,6 +13,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeFile: (filePath: string, content: string): Promise<void> =>
     ipcRenderer.invoke('writeFile', { filePath, content }),
 
+  deleteEntry: (entryPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('deleteEntry', entryPath),
+
+  renameEntry: (oldPath: string, newPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('renameEntry', { oldPath, newPath }),
+
+  openInExplorer: (targetPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('openInExplorer', targetPath),
+
   makeDirectory: (dirPath: string): Promise<void> =>
     ipcRenderer.invoke('makeDirectory', dirPath),
 
@@ -67,6 +76,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowClose: (): Promise<void> => ipcRenderer.invoke('windowClose'),
 
   windowIsMaximized: (): Promise<boolean> => ipcRenderer.invoke('windowIsMaximized'),
+
+  showOpenFileDialog: (startingPath?: string): Promise<string | null> =>
+    ipcRenderer.invoke('showOpenFileDialog', { startingPath }),
+
+  showSaveFileDialog: (defaultName?: string, startingPath?: string): Promise<string | null> =>
+    ipcRenderer.invoke('showSaveFileDialog', { defaultName, startingPath }),
+
+  showFolderPickerDialog: (): Promise<string | null> =>
+    ipcRenderer.invoke('showFolderPickerDialog'),
 
   onMaximizeChange: (callback: (maximized: boolean) => void): (() => void) => {
     const handler = (_event: IpcRendererEvent, maximized: boolean) => callback(maximized)

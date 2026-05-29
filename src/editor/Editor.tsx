@@ -29,6 +29,8 @@ import { applyEditorStyles } from '../utils/editor-styles'
 import { handleImageFile, insertImage, hasImageItems, getImageFiles } from '../utils/images'
 import { sanitizeFileName } from '../constants'
 import katex from 'katex'
+import TurndownService from 'turndown'
+import { marked } from 'marked'
 
 const lowlight = createLowlight(common)
 
@@ -54,6 +56,8 @@ export interface EditorHandle {
   insertBlock: (type: string) => void
   insertText: (text: string | Record<string, unknown>) => void
   getExportHTML: () => string
+  exportMarkdown: () => string
+  importMarkdown: (markdown: string) => Promise<void>
 }
 
 interface EditorProps {
@@ -78,6 +82,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   const suppressModifiedRef = useRef(false)
   const filePathRef = useRef<string | null>(null)
   const titleRef = useRef('')
+  const prevFocusNodeRef = useRef<HTMLElement | null>(null)
   const [title, setTitle] = useState('')
   const [selectionToolbarPos, setSelectionToolbarPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -100,6 +105,30 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     if (top < 0) top = 4
     setSelectionToolbarPos({ top, left })
   }, [])
+
+  const updateFocusNode = useCallback((ed: ReturnType<typeof useEditor>) => {
+    if (!ed || !focusMode) {
+      if (prevFocusNodeRef.current) {
+        prevFocusNodeRef.current.classList.remove('focus-active')
+        prevFocusNodeRef.current = null
+      }
+      return
+    }
+    if (prevFocusNodeRef.current) {
+      prevFocusNodeRef.current.classList.remove('focus-active')
+    }
+    const { anchor } = ed.state.selection
+    const domPos = ed.view.domAtPos(anchor)
+    let node = domPos.node as HTMLElement
+    const container = ed.view.dom
+    while (node && node.parentElement && node.parentElement !== container) {
+      node = node.parentElement
+    }
+    if (node && node.parentElement === container) {
+      node.classList.add('focus-active')
+      prevFocusNodeRef.current = node
+    }
+  }, [focusMode])
 
   const mathBlockWithView = MathBlock.extend({
     addNodeView() { return ReactNodeViewRenderer(MathBlockView) },
@@ -160,10 +189,33 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         const files = event.dataTransfer?.files
         if (!files || files.length === 0) return false
         const imageFiles = getImageFiles(files)
-        if (!imageFiles.length) return false
-        event.preventDefault()
-        imageFiles.forEach(f => handleImageFile(f, editor!, insertImage))
-        return true
+        if (imageFiles.length) {
+          event.preventDefault()
+          imageFiles.forEach(f => handleImageFile(f, editor!, insertImage))
+          return true
+        }
+        for (const file of Array.from(files)) {
+          const fp = (file as any).path
+          if (!fp || !/\.(json|md)$/i.test(fp)) continue
+          event.preventDefault()
+          ;(async () => {
+            const content = await window.electronAPI?.readFile(fp)
+            if (content == null) return
+            const fileName = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+            setTitle(fileName); titleRef.current = fileName
+            filePathRef.current = /\.md$/i.test(fp) ? null : fp
+            if (!editor) return
+            if (/\.md$/i.test(fp)) {
+              const html = await marked.parse(content)
+              editor.commands.setContent(html as string)
+            } else {
+              try { editor.commands.setContent(JSON.parse(content)) }
+              catch { editor.commands.setContent(content) }
+            }
+          })()
+          return true
+        }
+        return false
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -179,7 +231,10 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       const fullText = ed.state.doc.textBetween(0, ed.state.doc.content.size, '\n', ' ')
       onLineCountChange?.(fullText ? fullText.split('\n').length : 1)
     },
-    onSelectionUpdate: ({ editor: ed }) => { updateToolbar(ed) },
+    onSelectionUpdate: ({ editor: ed }) => {
+      updateToolbar(ed)
+      updateFocusNode(ed)
+    },
   })
 
   useEffect(() => {
@@ -187,6 +242,16 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     if (darkMode) editor.view.dom.parentElement?.classList.add('dark')
     else editor.view.dom.parentElement?.classList.remove('dark')
   }, [darkMode, editor])
+
+  useEffect(() => {
+    if (!editor) return
+    if (focusMode) {
+      updateFocusNode(editor)
+    } else {
+      document.querySelectorAll('.focus-active').forEach(el => el.classList.remove('focus-active'))
+      prevFocusNodeRef.current = null
+    }
+  }, [focusMode, editor]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const commitSave = useCallback(async () => {
     if (!editor) return
@@ -212,7 +277,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       }
     }
     if (!fp) return
-    try { await window.electronAPI?.writeFile(fp, content) } catch { return }
+    try { await window.electronAPI?.writeFile(fp, content) } catch { window.alert('保存失败，请检查磁盘空间和权限'); return }
     filePathRef.current = fp
     const savedTitle = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
     setTitle(savedTitle)
@@ -239,6 +304,15 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       onModifiedChangeRef.current?.(false)
     },
     getExportHTML: () => editor ? renderMathForExport(editor.getHTML()) : '',
+    exportMarkdown: () => editor ? markdownService.turndown(editor.getHTML()) : '',
+    importMarkdown: async (markdown) => {
+      if (!editor) return
+      const html = await marked.parse(markdown)
+      suppressModifiedRef.current = true
+      editor.commands.setContent(html as string)
+      modifiedRef.current = false
+      onModifiedChangeRef.current?.(false)
+    },
     setTitle: (t: string) => { setTitle(t); titleRef.current = t },
     setFilePath: (filePath: string) => { filePathRef.current = filePath },
     clear: () => {
@@ -274,10 +348,16 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       const fileName = filePath.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
       setTitle(fileName); titleRef.current = fileName
       suppressModifiedRef.current = true
-      try { editor.commands.setContent(JSON.parse(content)) }
-      catch { editor.commands.setContent(content) }
+      if (/\.md$/i.test(filePath)) {
+        const html = await marked.parse(content)
+        editor.commands.setContent(html as string)
+        filePathRef.current = null
+      } else {
+        try { editor.commands.setContent(JSON.parse(content)) }
+        catch { editor.commands.setContent(content) }
+        filePathRef.current = filePath
+      }
       modifiedRef.current = false; onModifiedChangeRef.current?.(false)
-      filePathRef.current = filePath
     },
     saveFile: async () => { await commitSave() },
     saveAs: async () => {
@@ -285,11 +365,12 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       const fp = await onShowSaveDialog(`${sanitizeFileName(titleRef.current)}.json`)
       if (!fp) return
       const content = JSON.stringify(editor.getJSON(), null, 2)
-      await window.electronAPI?.writeFile(fp, content)
+      try { await window.electronAPI?.writeFile(fp, content) } catch { window.alert('保存失败，请检查磁盘空间和权限'); return }
       filePathRef.current = fp
       const savedTitle = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
       setTitle(savedTitle); titleRef.current = savedTitle
       modifiedRef.current = false; onModifiedChangeRef.current?.(false)
+      onSavedRef.current?.()
     },
     undo: () => editor?.chain().focus().undo().run(),
     redo: () => editor?.chain().focus().redo().run(),
@@ -353,7 +434,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         }}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); editor?.commands.focus() } }}
         style={{
-          display: 'block', width: '100%', maxWidth: `${settings?.editorWidth || 800}px`,
+          display: 'block', width: '100%', maxWidth: 'var(--editor-max-width)',
           margin: '0 auto', padding: '24px 48px 16px',
           fontSize: `${(settings?.fontSize || 18) + 6}px`, fontWeight: 700, textAlign: 'center',
         }}
@@ -389,5 +470,34 @@ function renderMathForExport(html: string): string {
   })
   return html
 }
+
+const markdownService = new TurndownService({
+  headingStyle: 'atx',
+  codeBlockStyle: 'fenced',
+  fence: '```',
+  hr: '---',
+  bulletListMarker: '-',
+})
+markdownService.addRule('mathBlock', {
+  filter: (node) => node.nodeType === 1 && (node as HTMLElement).getAttribute('data-math-block') !== null,
+  replacement: (_content, node) => {
+    const tex = (node as HTMLElement).getAttribute('data-math-block') || ''
+    return `\n$$\n${tex}\n$$\n`
+  },
+})
+markdownService.addRule('mathInline', {
+  filter: (node) => node.nodeType === 1 && (node as HTMLElement).getAttribute('data-math-inline') !== null,
+  replacement: (_content, node) => {
+    const tex = (node as HTMLElement).getAttribute('data-math-inline') || ''
+    return `$${tex}$`
+  },
+})
+markdownService.addRule('wikiLink', {
+  filter: (node) => node.nodeType === 1 && (node as HTMLElement).getAttribute('data-wiki-link') !== null,
+  replacement: (_content, node) => {
+    const name = (node as HTMLElement).getAttribute('data-wiki-link') || ''
+    return `[[${name}]]`
+  },
+})
 
 export default Editor

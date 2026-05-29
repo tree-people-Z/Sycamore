@@ -5,7 +5,7 @@ import {
   Type, Quote, List, ListOrdered,
   Table, Image, Minus, FileCode, Undo2, Redo2,
   Sigma, MoreHorizontal, Settings, Home,
-  Highlighter, FileDown, Palette,
+  Highlighter, FileDown, FileUp, Palette,
 } from 'lucide-react'
 import type { InlineFormatType, BlockFormatType } from '../types'
 import { HEADING_ENTRIES } from '../types'
@@ -25,6 +25,9 @@ interface ToolbarProps {
   onRedo?: () => void
   onExportHtml?: () => void
   onExportPdf?: () => void
+  onExportMarkdown?: () => void
+  onImportMarkdown?: () => void
+  onBatchImportMarkdown?: () => void
 }
 
 function ColorPicker({ onFormat, btn }: { onFormat?: (type: InlineFormatType, url?: string) => void; btn: string }) {
@@ -86,6 +89,9 @@ function Toolbar({
   onRedo,
   onExportHtml,
   onExportPdf,
+  onExportMarkdown,
+  onImportMarkdown,
+  onBatchImportMarkdown,
 }: ToolbarProps) {
   const [showHeading, setShowHeading] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -226,6 +232,28 @@ function Toolbar({
             >
               <FileDown size={14} className="text-[var(--color-text-secondary)]" />
               <span>导出 PDF</span>
+            </button>
+            <button
+              onClick={() => { onExportMarkdown?.(); setShowMoreMenu(false) }}
+              className="w-full px-3 py-2 text-xs text-left text-[var(--color-text)] hover:bg-[var(--color-hover)] flex items-center gap-2.5 transition-colors"
+            >
+              <FileDown size={14} className="text-[var(--color-text-secondary)]" />
+              <span>导出 Markdown</span>
+            </button>
+            <div className="h-px bg-[var(--color-border)] my-1" />
+            <button
+              onClick={() => { onImportMarkdown?.(); setShowMoreMenu(false) }}
+              className="w-full px-3 py-2 text-xs text-left text-[var(--color-text)] hover:bg-[var(--color-hover)] flex items-center gap-2.5 transition-colors"
+            >
+              <FileUp size={14} className="text-[var(--color-text-secondary)]" />
+              <span>导入 Markdown</span>
+            </button>
+            <button
+              onClick={() => { onBatchImportMarkdown?.(); setShowMoreMenu(false) }}
+              className="w-full px-3 py-2 text-xs text-left text-[var(--color-text)] hover:bg-[var(--color-hover)] flex items-center gap-2.5 transition-colors"
+            >
+              <FileUp size={14} className="text-[var(--color-text-secondary)]" />
+              <span>批量导入 Markdown</span>
             </button>
           </div>
         )}

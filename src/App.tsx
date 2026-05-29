@@ -15,6 +15,7 @@ import { useSettings } from './hooks/useSettings'
 import { useUnsavedGuard } from './hooks/useUnsavedGuard'
 import { useDialogs } from './hooks/useDialogs'
 import type { InlineFormatType, BlockFormatType } from './types'
+import { batchConvertMd } from './utils/markdown-convert'
 
 function App() {
   const editorRef = useRef<EditorHandle>(null)
@@ -98,6 +99,63 @@ function App() {
     await window.electronAPI?.exportPdfToPath(fp, editor.getExportHTML(), darkMode)
   }, [showSaveDialog, darkMode])
 
+  const handleExportMarkdown = useCallback(async () => {
+    const editor = editorRef.current
+    if (!editor) return
+    const fp = await showSaveDialog('untitled.md')
+    if (!fp) return
+    const md = editor.exportMarkdown()
+    await window.electronAPI?.writeFile(fp, md)
+  }, [showSaveDialog])
+
+  const handleImportMarkdown = useCallback(async () => {
+    const editor = editorRef.current
+    if (!editor) return
+    const fp = await showOpenDialog()
+    if (!fp) return
+    if (!/\.md$/i.test(fp)) return
+    const content = await window.electronAPI?.readFile(fp)
+    if (content == null) return
+    setShowWelcome(false)
+    setHasContent(true)
+    await editor.importMarkdown(content)
+    const fileName = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+    editor.setTitle(fileName)
+  }, [showOpenDialog])
+
+  const handleBatchImportMarkdown = useCallback(async () => {
+    const fp = await showFolderDialog()
+    if (!fp) return
+    const entries = await window.electronAPI?.readDirectory(fp)
+    if (!entries) return
+    const mdFiles = entries.filter(e => !e.isDirectory && /\.md$/i.test(e.name))
+    if (mdFiles.length === 0) { window.alert('所选文件夹中没有 Markdown 文件'); return }
+    let count = 0
+    for (const entry of mdFiles) {
+      const content = await window.electronAPI?.readFile(entry.path)
+      if (!content) continue
+      const json = await batchConvertMd(content)
+      const date = entry.mtime ? new Date(entry.mtime) : new Date()
+      const monthDir = `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月`
+      const baseDir = linkedFolderPath
+        ? linkedFolderPath.replace(/\\/g, '/')
+        : (await window.electronAPI?.getDefaultSaveDir())
+      if (!baseDir) continue
+      const dir = baseDir + '/' + monthDir
+      await window.electronAPI?.makeDirectory(dir)
+      let name = entry.name.replace(/\.md$/i, '.json')
+      let counter = 1
+      while (await window.electronAPI?.fileExists(dir + '/' + name)) {
+        name = entry.name.replace(/\.md$/i, '') + `(${counter}).json`
+        counter++
+      }
+      await window.electronAPI?.writeFile(dir + '/' + name, JSON.stringify(json, null, 2))
+      count++
+    }
+    window.alert(`成功导入 ${count} 个文件`)
+    handleRefreshFolder()
+  }, [showFolderDialog, linkedFolderPath, handleRefreshFolder])
+
   const handleSaveCurrent = useCallback(async () => {
     await editorRef.current?.saveFile()
   }, [])
@@ -109,7 +167,7 @@ function App() {
       switch (action) {
         case 'new': setShowWelcome(false); await editor.newFile(); break
         case 'open': setShowWelcome(false); await editor.openFile(); break
-        case 'save': setShowWelcome(false); await editor.saveFile(); handleRefreshFolder(); break
+        case 'save': setShowWelcome(false); await editor.saveFile(); break
         case 'save-as': await editor.saveAs(); handleRefreshFolder(); break
         case 'exit': await handleExit(); break
         case 'undo': editor.undo(); break
@@ -119,10 +177,13 @@ function App() {
         case 'paste': editor.focus(); document.execCommand('paste'); break
         case 'export-html': await handleExportHtml(); break
         case 'export-pdf': await handleExportPdf(); break
+        case 'export-markdown': await handleExportMarkdown(); break
+        case 'import-markdown': await handleImportMarkdown(); break
+        case 'batch-import-markdown': await handleBatchImportMarkdown(); break
       }
     })
     return () => cleanup?.()
-  }, [handleExit, handleExportHtml, handleExportPdf, handleRefreshFolder])
+  }, [handleExit, handleExportHtml, handleExportPdf, handleExportMarkdown, handleImportMarkdown, handleBatchImportMarkdown, handleRefreshFolder])
 
   useEffect(() => {
     const cleanup = window.electronAPI?.onBeforeClose(beforeClose)
@@ -135,9 +196,9 @@ function App() {
     setTimeout(() => editorRef.current?.newFile(), 0)
   }, [])
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     setShowWelcome(false)
-    editorRef.current?.saveFile()
+    await editorRef.current?.saveFile()
   }, [])
 
   const handleContentChange = useCallback((content: string) => {
@@ -253,6 +314,9 @@ function App() {
         onRedo={() => { if (!showWelcome) editorRef.current?.redo() }}
         onExportHtml={() => { if (!showWelcome) handleExportHtml() }}
         onExportPdf={() => { if (!showWelcome) handleExportPdf() }}
+        onExportMarkdown={() => { if (!showWelcome) handleExportMarkdown() }}
+        onImportMarkdown={() => handleImportMarkdown()}
+        onBatchImportMarkdown={() => handleBatchImportMarkdown()}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -266,7 +330,8 @@ function App() {
 
           {showWelcome && (
             <WelcomePage key={welcomeKey} onNew={handleNew} onOpenFile={handleOpenFile}
-              onLinkFolder={handleLinkFolder} linkedFolderPath={linkedFolderPath} folderEntries={folderEntries} />
+              onLinkFolder={handleLinkFolder} linkedFolderPath={linkedFolderPath}
+              folderEntries={folderEntries} onRefreshFolder={handleRefreshFolder} />
           )}
 
           <div className={`h-full transition-opacity duration-150 ${showWelcome ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>

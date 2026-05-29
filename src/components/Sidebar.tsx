@@ -2,7 +2,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react'
 import {
   FilePlus, FileText, Folder, FolderOpen, Search,
   ChevronRight, Link2, Unlink, RefreshCw,
-  List, FolderTree, ChevronLeft,
+  List, FolderTree, ChevronLeft, Trash2,
+  Pencil, Copy, ExternalLink,
 } from 'lucide-react'
 import type { FolderEntry } from '../types'
 
@@ -28,57 +29,111 @@ function Sidebar({
 }: SidebarProps) {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
-  const [subEntries, setSubEntries] = useState<Record<string, FolderEntry[]>>({})
   const [viewMode, setViewMode] = useState<'tree' | 'flat'>('tree')
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entry: FolderEntry } | null>(null)
 
   useEffect(() => {
     if (!isVisible) {
       setSearchQuery('')
+      setContextMenu(null)
     }
   }, [isVisible])
 
-  const toggleDir = useCallback(async (dirPath: string) => {
-    let shouldLoad = false
+  useEffect(() => {
+    const dismiss = () => setContextMenu(null)
+    if (contextMenu) {
+      document.addEventListener('click', dismiss)
+      document.addEventListener('scroll', dismiss, true)
+    }
+    return () => {
+      document.removeEventListener('click', dismiss)
+      document.removeEventListener('scroll', dismiss, true)
+    }
+  }, [contextMenu])
+
+  const toggleDir = useCallback((dirPath: string) => {
     setExpandedDirs(prev => {
       const next = new Set(prev)
-      if (next.has(dirPath)) {
-        next.delete(dirPath)
-      } else {
-        next.add(dirPath)
-        shouldLoad = true
-      }
+      if (next.has(dirPath)) next.delete(dirPath)
+      else next.add(dirPath)
       return next
     })
-    if (shouldLoad && !subEntries[dirPath]) {
-      const entries = await window.electronAPI?.readDirectory(dirPath)
-      if (entries) {
-        setSubEntries(prev => ({ ...prev, [dirPath]: entries }))
-      }
-    }
-  }, [subEntries])
+  }, [])
 
   const handleOpenFileWrapper = useCallback((filePath: string) => {
     setCurrentFilePath(filePath)
+    setContextMenu(null)
     onOpenFile?.(filePath)
   }, [onOpenFile])
 
-  const matchesSearch = useCallback((name: string) => {
-    return !searchQuery || name.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleContextMenu = useCallback((e: React.MouseEvent, entry: FolderEntry) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, entry })
+  }, [])
+
+  const handleDelete = useCallback(async (entry: FolderEntry) => {
+    setContextMenu(null)
+    const name = entry.name.replace(/\.json$/i, '')
+    if (!window.confirm(`确定要删除"${name}"吗？`)) return
+    const ok = await window.electronAPI?.deleteEntry(entry.path)
+    if (ok) {
+      if (currentFilePath === entry.path) {
+        setCurrentFilePath(null)
+      }
+      onRefreshFolder?.()
+    }
+  }, [currentFilePath, onRefreshFolder])
+
+  const handleRename = useCallback(async (entry: FolderEntry) => {
+    setContextMenu(null)
+    const oldName = entry.name.replace(/\.json$/i, '')
+    const newName = window.prompt('输入新名称：', oldName)
+    if (!newName || newName === oldName) return
+    const dir = entry.path.replace(/[/\\][^/\\]+$/, '')
+    const newPath = dir + '\\' + newName + (entry.isDirectory ? '' : '.json')
+    const ok = await window.electronAPI?.renameEntry(entry.path, newPath)
+    if (ok) {
+      if (currentFilePath === entry.path) {
+        setCurrentFilePath(newPath)
+      }
+      onRefreshFolder?.()
+    }
+  }, [currentFilePath, onRefreshFolder])
+
+  const handleOpenFolder = useCallback(async (entry: FolderEntry) => {
+    setContextMenu(null)
+    await window.electronAPI?.openInExplorer(entry.path)
+  }, [])
+
+  const handleCopyPath = useCallback((entry: FolderEntry) => {
+    setContextMenu(null)
+    navigator.clipboard.writeText(entry.path)
+  }, [])
+
+  const matchesSearch = useCallback((name: string, preview?: string) => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return name.toLowerCase().includes(q) || (preview || '').toLowerCase().includes(q)
   }, [searchQuery])
 
   const dirHasMatchingChild = useCallback((dirPath: string) => {
-    if (!searchQuery) return false
-    const children = subEntries[dirPath] || []
-    return children.some(e => matchesSearch(e.name))
-  }, [searchQuery, subEntries, matchesSearch])
+    if (!searchQuery || !folderEntries) return false
+    const prefix = dirPath.replace(/\\/g, '/') + '/'
+    return folderEntries.some(e => {
+      const parent = e.path.replace(/[/\\][^/\\]+$/, '').replace(/\\/g, '/') + '/'
+      return parent === prefix && matchesSearch(e.name, e.preview)
+    })
+  }, [searchQuery, folderEntries, matchesSearch])
 
   const filteredEntries = useMemo(
-    () => folderEntries?.filter(e => matchesSearch(e.name) || (e.isDirectory && dirHasMatchingChild(e.path))) ?? [],
+    () => folderEntries?.filter(e => matchesSearch(e.name, e.preview) || (e.isDirectory && dirHasMatchingChild(e.path))) ?? [],
     [folderEntries, matchesSearch, dirHasMatchingChild],
   )
   const flatEntries = useMemo(
-    () => (folderEntries || []).filter(e => !e.isDirectory && /\.json$/i.test(e.name) && matchesSearch(e.name)),
+    () => (folderEntries || []).filter(e => !e.isDirectory && /\.json$/i.test(e.name) && matchesSearch(e.name, e.preview))
+      .sort((a, b) => (b.mtime || 0) - (a.mtime || 0)),
     [folderEntries, matchesSearch],
   )
 
@@ -159,10 +214,11 @@ function Sidebar({
             flatEntries.length === 0 ? (
               <p className="text-xs text-[#aeaeb2] text-center pt-6">无匹配文件</p>
             ) : (
-              flatEntries.map(entry => (
+                  flatEntries.map(entry => (
                 <button
                   key={entry.path}
                   onClick={() => handleOpenFileWrapper(entry.path)}
+                  onContextMenu={(e) => handleContextMenu(e, entry)}
                   className={`sidebar-item w-full rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] p-3 hover:shadow-md hover:border-[var(--color-accent)]/30 transition-all text-left ${currentFilePath === entry.path ? 'active' : ''}`}
                 >
                   <div className="flex items-center gap-3">
@@ -185,11 +241,17 @@ function Sidebar({
                 const rel = entry.path.replace(folderPath, '').replace(/^[/\\]/, '')
                 return !rel.includes('/') && !rel.includes('\\')
               }
+              const dirHasFiles = (dirPath: string) => {
+                const prefix = dirPath.replace(/\\/g, '/') + '/'
+                return (folderEntries || []).some(e =>
+                  !e.isDirectory && /\.json$/i.test(e.name) && e.path.replace(/\\/g, '/') !== dirPath.replace(/\\/g, '/') && e.path.replace(/\\/g, '/').startsWith(prefix)
+                )
+              }
               const visibleRoot = filteredEntries.filter(e =>
                 isRootLevel(e) && (
                   !e.isDirectory
                     ? /\.json$/i.test(e.name)
-                    : (subEntries[e.path] ? (subEntries[e.path].some(s => /\.json$/i.test(s.name))) : true)
+                    : dirHasFiles(e.path)
                 )
               )
               return visibleRoot.length === 0 ? (
@@ -201,6 +263,7 @@ function Sidebar({
                       <div>
                         <button
                           onClick={() => toggleDir(entry.path)}
+                          onContextMenu={(e) => handleContextMenu(e, entry)}
                           className="sidebar-item w-full rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] p-3 hover:shadow-md hover:border-[var(--color-accent)]/30 transition-all text-left"
                         >
                           <div className="flex items-center gap-3">
@@ -220,9 +283,11 @@ function Sidebar({
                         </button>
                         {expandedDirs.has(entry.path) && (
                           <div className="mt-1 ml-4 space-y-1">
-                            {(subEntries[entry.path] || []).filter(e =>
-                              (e.isDirectory || /\.json$/i.test(e.name)) && matchesSearch(e.name)
-                            ).map(sub => (
+                            {(folderEntries || []).filter(e => {
+                              const parent = e.path.replace(/[/\\][^/\\]+$/, '').replace(/\\/g, '/')
+                              const dir = entry.path.replace(/\\/g, '/')
+                              return parent === dir && (e.isDirectory || /\.json$/i.test(e.name)) && matchesSearch(e.name, e.preview)
+                            }).map(sub => (
                               sub.isDirectory ? (
                                 <div key={sub.path} className="px-3 py-2 text-xs text-[var(--color-text-secondary)] truncate">
                                   <Folder size={12} className="inline mr-1" />{sub.name}
@@ -231,6 +296,7 @@ function Sidebar({
                                 <button
                                   key={sub.path}
                                   onClick={() => handleOpenFileWrapper(sub.path)}
+                                  onContextMenu={(e) => handleContextMenu(e, sub)}
                                   className={`sidebar-item w-full rounded-lg bg-[var(--color-surface)]/50 border border-[var(--color-border)] px-3 py-2 hover:bg-[var(--color-surface)] hover:shadow-sm transition-all text-left ${currentFilePath === sub.path ? 'active' : ''}`}
                                 >
                                   <div className="flex items-center gap-2.5">
@@ -248,6 +314,7 @@ function Sidebar({
                     ) : (
                       <button
                         onClick={() => handleOpenFileWrapper(entry.path)}
+                        onContextMenu={(e) => handleContextMenu(e, entry)}
                         className={`sidebar-item w-full rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] p-3 hover:shadow-md hover:border-[var(--color-accent)]/30 transition-all text-left ${currentFilePath === entry.path ? 'active' : ''}`}
                       >
                         <div className="flex items-center gap-3">
@@ -299,6 +366,44 @@ function Sidebar({
           )}
         </div>
       </div>
+
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[150px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl py-1.5"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => handleRename(contextMenu.entry)}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
+          >
+            <Pencil size={13} />
+            <span>重命名</span>
+          </button>
+          <button
+            onClick={() => handleOpenFolder(contextMenu.entry)}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
+          >
+            <ExternalLink size={13} />
+            <span>打开文件夹</span>
+          </button>
+          <button
+            onClick={() => handleCopyPath(contextMenu.entry)}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
+          >
+            <Copy size={13} />
+            <span>复制路径</span>
+          </button>
+          <div className="h-px bg-[var(--color-border)] mx-2 my-1" />
+          <button
+            onClick={() => handleDelete(contextMenu.entry)}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-500 hover:bg-red-500/10 transition-colors text-left"
+          >
+            <Trash2 size={13} />
+            <span>删除</span>
+          </button>
+        </div>
+      )}
     </>
   )
 }

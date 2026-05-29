@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain } from 'electron'
+import { app, BrowserWindow, Menu, ipcMain, shell, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs/promises'
 import { buildExportHtml } from './export-template'
@@ -86,7 +86,6 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL!)
-    mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
@@ -125,9 +124,19 @@ function createMenu() {
           click: () => mainWindow?.webContents.send('menu-action', 'export-html'),
         },
         {
-          label: '导出 PDF',
-          accelerator: 'CmdOrCtrl+Shift+P',
-          click: () => mainWindow?.webContents.send('menu-action', 'export-pdf'),
+          label: '导出 Markdown',
+          accelerator: 'CmdOrCtrl+Shift+M',
+          click: () => mainWindow?.webContents.send('menu-action', 'export-markdown'),
+        },
+        { type: 'separator' },
+        {
+          label: '导入 Markdown',
+          accelerator: 'CmdOrCtrl+Shift+I',
+          click: () => mainWindow?.webContents.send('menu-action', 'import-markdown'),
+        },
+        {
+          label: '批量导入 Markdown',
+          click: () => mainWindow?.webContents.send('menu-action', 'batch-import-markdown'),
         },
         { type: 'separator' },
         {
@@ -206,7 +215,7 @@ async function readDirEntries(dirPath: string): Promise<DirEntry[]> {
     const dirents = await fs.readdir(dirPath, { withFileTypes: true })
     const entries: DirEntry[] = []
     for (const e of dirents) {
-      if (!e.isDirectory() && !e.name.endsWith('.json')) continue
+      if (!e.isDirectory() && !e.name.endsWith('.json') && !e.name.endsWith('.md')) continue
       const fullPath = path.join(dirPath, e.name)
       const entry: DirEntry = { name: e.name, path: fullPath, isDirectory: e.isDirectory() }
       try {
@@ -219,7 +228,7 @@ async function readDirEntries(dirPath: string): Promise<DirEntry[]> {
     entries.sort((a, b) => {
       if (a.isDirectory && !b.isDirectory) return -1
       if (!a.isDirectory && b.isDirectory) return 1
-      return a.name.localeCompare(b.name)
+      return (b.mtime || 0) - (a.mtime || 0)
     })
     return entries
   } catch { return [] }
@@ -257,6 +266,37 @@ ipcMain.handle('writeFile', async (_event, { filePath, content }: { filePath: st
   await fs.writeFile(filePath, content, 'utf-8')
 })
 
+ipcMain.handle('deleteEntry', async (_event, entryPath: string) => {
+  try {
+    const stat = await fs.stat(entryPath)
+    if (stat.isDirectory()) {
+      await fs.rm(entryPath, { recursive: true, force: true })
+    } else {
+      await fs.unlink(entryPath)
+    }
+    return true
+  } catch { return false }
+})
+
+ipcMain.handle('renameEntry', async (_event, { oldPath, newPath }: { oldPath: string; newPath: string }) => {
+  try {
+    await fs.rename(oldPath, newPath)
+    return true
+  } catch { return false }
+})
+
+ipcMain.handle('openInExplorer', async (_event, targetPath: string) => {
+  try {
+    const stat = await fs.stat(targetPath)
+    if (stat.isDirectory()) {
+      await shell.openPath(targetPath)
+    } else {
+      shell.showItemInFolder(targetPath)
+    }
+    return true
+  } catch { return false }
+})
+
 ipcMain.handle('makeDirectory', async (_event, dirPath: string) => {
   await fs.mkdir(dirPath, { recursive: true })
 })
@@ -267,7 +307,7 @@ ipcMain.handle('fileExists', async (_event, filePath: string) => {
 })
 
 ipcMain.handle('getDefaultSaveDir', async () => {
-  return path.join(app.getPath('documents'), 'Sycamore')
+  return path.join(app.getPath('documents'), 'Sycamore笔记')
 })
 
 ipcMain.handle('getHomePath', async () => {
@@ -331,3 +371,36 @@ ipcMain.handle('windowMaximize', () => {
 ipcMain.handle('windowClose', () => { mainWindow?.close() })
 
 ipcMain.handle('windowIsMaximized', () => mainWindow?.isMaximized() ?? false)
+
+ipcMain.handle('showOpenFileDialog', async (_event, { startingPath }: { startingPath?: string }) => {
+  const opts: Electron.OpenDialogOptions = {
+    title: '打开文件',
+    filters: [{ name: 'Sycamore Files', extensions: ['json', 'md'] }],
+    properties: ['openFile'],
+  }
+  if (startingPath) opts.defaultPath = startingPath
+  const result = await dialog.showOpenDialog(mainWindow!, opts)
+  return result.canceled ? null : result.filePaths[0]
+})
+
+ipcMain.handle('showSaveFileDialog', async (_event, { defaultName, startingPath }: { defaultName?: string; startingPath?: string }) => {
+  const opts: Electron.SaveDialogOptions = {
+    title: '保存文件',
+    filters: [{ name: 'Sycamore Files', extensions: ['json', 'md', 'html', 'pdf'] }],
+  }
+  if (defaultName) {
+    opts.defaultPath = (startingPath ? startingPath + '\\' : '') + defaultName
+  } else if (startingPath) {
+    opts.defaultPath = startingPath
+  }
+  const result = await dialog.showSaveDialog(mainWindow!, opts)
+  return result.canceled ? null : result.filePath
+})
+
+ipcMain.handle('showFolderPickerDialog', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    title: '选择文件夹',
+    properties: ['openDirectory'],
+  })
+  return result.canceled ? null : result.filePaths[0]
+})

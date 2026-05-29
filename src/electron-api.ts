@@ -12,6 +12,9 @@ export interface ElectronAPI {
   readFile(filePath: string): Promise<string>
   writeFile(filePath: string, content: string): Promise<void>
   makeDirectory(dirPath: string): Promise<void>
+  deleteEntry(entryPath: string): Promise<boolean>
+  renameEntry(oldPath: string, newPath: string): Promise<boolean>
+  openInExplorer(targetPath: string): Promise<boolean>
   fileExists(filePath: string): Promise<boolean>
   getDefaultSaveDir(): Promise<string>
   getHomePath(): Promise<string>
@@ -29,5 +32,8 @@ export interface ElectronAPI {
   windowMaximize(): Promise<void>
   windowClose(): Promise<void>
   windowIsMaximized(): Promise<boolean>
+  showOpenFileDialog(startingPath?: string): Promise<string | null>
+  showSaveFileDialog(defaultName?: string, startingPath?: string): Promise<string | null>
+  showFolderPickerDialog(): Promise<string | null>
   onMaximizeChange(callback: (maximized: boolean) => void): () => void
 }

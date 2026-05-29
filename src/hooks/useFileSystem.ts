@@ -21,6 +21,20 @@ export function useFileSystem(showFolderDialog: () => Promise<string | null>) {
         setFolderPath(linkedFolderPath)
         setFolderEntries(entries)
       })
+    } else if (!linkedFolderPath && !pendingLinkRef.current) {
+      pendingLinkRef.current = true
+      ;(async () => {
+        const defaultDir = await window.electronAPI?.getDefaultSaveDir()
+        if (defaultDir) {
+          await window.electronAPI?.makeDirectory(defaultDir)
+          localStorage.setItem(LINKED_FOLDER_KEY, defaultDir)
+          const entries = await loadFolder(defaultDir)
+          setFolderPath(defaultDir)
+          setFolderEntries(entries)
+          setLinkedFolderPath(defaultDir)
+        }
+        pendingLinkRef.current = false
+      })()
     }
   }, [linkedFolderPath, loadFolder])
 

@@ -179,6 +179,7 @@ body {
   border: none;
   border-bottom: 1px solid var(--color-border);
   outline: none;
+  transition: max-width 0.35s ease;
   background: transparent;
   color: inherit;
   font-family: inherit;
@@ -216,6 +217,7 @@ body {
   outline: none;
   min-height: calc(100vh - 200px);
   max-width: var(--editor-max-width);
+  transition: max-width 0.35s ease;
   margin: 0 auto;
   padding: 0 48px 48px;
   font-size: var(--editor-font-size);
@@ -524,12 +526,12 @@ body {
 }
 
 /* Focus mode - dim non-active content */
-.editor-content.focus-mode .ProseMirror > *:not(.ProseMirror-focused-node):not(.ProseMirror-selectednode) {
+.editor-content.focus-mode .ProseMirror > *:not(.ProseMirror-focused-node):not(.ProseMirror-selectednode):not(.focus-active) {
   opacity: 0.3;
   transition: opacity 0.3s ease;
 }
 .editor-content.focus-mode .ProseMirror > *:not(.ProseMirror-focused-node):not(.ProseMirror-selectednode):hover {
-  opacity: 0.7;
+  opacity: 1;
 }
 
 /* Progress ring in status bar */
