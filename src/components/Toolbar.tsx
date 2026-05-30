@@ -4,8 +4,8 @@ import {
   Bold, Italic, Strikethrough, Underline, Code, Link2,
   Type, Quote, List, ListOrdered,
   Table, Image, Minus, FileCode, Undo2, Redo2,
-  Sigma, MoreHorizontal, Settings, Home,
-  Highlighter, FileDown, FileUp, Palette,
+  Sigma, MoreHorizontal, Settings, Home, BarChart3,
+  Highlighter, FileDown, FileUp, Palette, MessageSquare,
 } from 'lucide-react'
 import type { InlineFormatType, BlockFormatType } from '../types'
 import { HEADING_ENTRIES } from '../types'
@@ -28,6 +28,8 @@ interface ToolbarProps {
   onExportMarkdown?: () => void
   onImportMarkdown?: () => void
   onBatchImportMarkdown?: () => void
+  onToggleAiChat?: () => void
+  onInsertChart?: () => void
 }
 
 function ColorPicker({ onFormat, btn }: { onFormat?: (type: InlineFormatType, url?: string) => void; btn: string }) {
@@ -92,6 +94,8 @@ function Toolbar({
   onExportMarkdown,
   onImportMarkdown,
   onBatchImportMarkdown,
+  onToggleAiChat,
+  onInsertChart,
 }: ToolbarProps) {
   const [showHeading, setShowHeading] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -218,6 +222,11 @@ function Toolbar({
               <Sigma size={14} className="text-[var(--color-text-secondary)]" />
               <span>数学公式</span>
             </button>
+            <button onClick={() => { onInsertChart?.(); setShowMoreMenu(false) }}
+              className="w-full px-3 py-2 text-xs text-left text-[var(--color-text)] hover:bg-[var(--color-hover)] flex items-center gap-2.5 transition-colors">
+              <BarChart3 size={14} className="text-[var(--color-text-secondary)]" />
+              <span>图表</span>
+            </button>
             <div className="h-px bg-[var(--color-border)] my-1" />
             <button
               onClick={() => { onExportHtml?.(); setShowMoreMenu(false) }}
@@ -260,6 +269,13 @@ function Toolbar({
       </div>
 
       <div className="flex-1" />
+
+      {/* AI Chat */}
+      {onToggleAiChat && (
+        <button onClick={onToggleAiChat} className={btn} title="AI 助手">
+          <MessageSquare size={15} className="text-[var(--color-accent)]" />
+        </button>
+      )}
 
       {/* Settings */}
       {onSettings && (

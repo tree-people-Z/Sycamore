@@ -27,11 +27,23 @@ function Sidebar({
   onLinkFolder, onUnlinkFolder, linkedFolderPath,
   isVisible, onMouseEnter, onMouseLeave, onRefreshFolder, onClose,
 }: SidebarProps) {
-  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('sidebar-expanded-dirs')
+      return saved ? new Set(JSON.parse(saved)) : new Set()
+    } catch { return new Set() }
+  })
   const [searchQuery, setSearchQuery] = useState('')
+  const [trashItems, setTrashItems] = useState<FolderEntry[]>([])
+  const [showTrash, setShowTrash] = useState(false)
   const [viewMode, setViewMode] = useState<'tree' | 'flat'>('tree')
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entry: FolderEntry } | null>(null)
+
+  useEffect(() => {
+    try { localStorage.setItem('sidebar-expanded-dirs', JSON.stringify([...expandedDirs])) }
+    catch {}
+  }, [expandedDirs])
 
   useEffect(() => {
     if (!isVisible) {
@@ -51,6 +63,12 @@ function Sidebar({
       document.removeEventListener('scroll', dismiss, true)
     }
   }, [contextMenu])
+
+  useEffect(() => {
+    if (isVisible && linkedFolderPath) {
+      window.electronAPI?.listTrashItems(linkedFolderPath).then(items => setTrashItems(items || []))
+    }
+  }, [isVisible, linkedFolderPath])
 
   const toggleDir = useCallback((dirPath: string) => {
     setExpandedDirs(prev => {
@@ -76,7 +94,10 @@ function Sidebar({
   const handleDelete = useCallback(async (entry: FolderEntry) => {
     setContextMenu(null)
     const name = entry.name.replace(/\.json$/i, '')
-    if (!window.confirm(`确定要删除"${name}"吗？`)) return
+    if (entry.isDirectory) {
+      const count = await window.electronAPI?.countDirectoryContents(entry.path) ?? 0
+      if (count > 0 && !window.confirm(`文件夹"${name}"包含 ${count} 个文件，确定移到回收站吗？`)) return
+    } else if (!window.confirm(`确定要删除"${name}"吗？`)) return
     const ok = await window.electronAPI?.deleteEntry(entry.path)
     if (ok) {
       if (currentFilePath === entry.path) {
@@ -365,6 +386,43 @@ function Sidebar({
             </button>
           )}
         </div>
+
+        {trashItems.length > 0 && (
+          <div className="flex-shrink-0 border-t border-[var(--color-border)] bg-red-500/[0.03] dark:bg-red-500/[0.05]">
+            <button onClick={() => setShowTrash(v => !v)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-500/70 hover:text-red-500 hover:bg-red-500/5 transition-colors">
+              <Trash2 size={12} />
+              <span className="truncate font-medium">回收站 ({trashItems.length})</span>
+              <ChevronRight size={11} className={`ml-auto transition-transform${showTrash ? ' rotate-90' : ''}`} />
+            </button>
+            {showTrash && (
+              <div className="px-2 pb-2 space-y-0.5 ml-[2px]">
+                {trashItems.map(item => (
+                  <div key={item.path} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-red-500/5 group">
+                    <Trash2 size={10} className="flex-shrink-0 text-red-500/40" />
+                    <span className="flex-1 text-[11px] text-[var(--color-text-secondary)] truncate">{item.name}</span>
+                    <button onClick={async () => {
+                      const orig = item.path.replace(/[/\\]\.trash[/\\]\d+-/, '\\')
+                      const restored = await window.electronAPI?.restoreFromTrash(item.path, orig)
+                      if (restored) {
+                        setTrashItems(prev => prev.filter(t => t.path !== item.path))
+                        onRefreshFolder?.()
+                      }
+                    }}
+                      className="text-[10px] px-1.5 py-0.5 rounded text-[var(--color-accent)] hover:bg-[var(--color-accent-10)] opacity-0 group-hover:opacity-100 transition-opacity">还原</button>
+                    <button onClick={async () => {
+                      if (window.confirm(`永久删除"${item.name}"？不可恢复`)) {
+                        await window.electronAPI?.permanentDelete(item.path)
+                        setTrashItems(prev => prev.filter(t => t.path !== item.path))
+                      }
+                    }}
+                      className="text-[10px] px-1.5 py-0.5 rounded text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity">永久删除</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {contextMenu && (

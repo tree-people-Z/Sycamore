@@ -13,13 +13,14 @@ export interface ElectronAPI {
   writeFile(filePath: string, content: string): Promise<void>
   makeDirectory(dirPath: string): Promise<void>
   deleteEntry(entryPath: string): Promise<boolean>
+  countDirectoryContents(dirPath: string): Promise<number>
+  listTrashItems(parentPath: string): Promise<Array<{ name: string; path: string; isDirectory: boolean }>>
+  restoreFromTrash(trashPath: string, originalPath: string): Promise<string | null>
+  permanentDelete(entryPath: string): Promise<boolean>
   renameEntry(oldPath: string, newPath: string): Promise<boolean>
   openInExplorer(targetPath: string): Promise<boolean>
   fileExists(filePath: string): Promise<boolean>
   getDefaultSaveDir(): Promise<string>
-  getHomePath(): Promise<string>
-  getSystemPath(name: string): Promise<string | null>
-  getDrives(): Promise<string[]>
   exportPdfToPath(filePath: string, html: string, darkMode: boolean): Promise<string | null>
 
   onMenuAction(callback: (action: string) => void): () => void

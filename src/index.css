@@ -555,3 +555,55 @@ body {
   background: var(--color-accent);
   pointer-events: none;
 }
+
+.ai-chat-msg p { margin: 0.3em 0; }
+.ai-chat-msg p:first-child { margin-top: 0; }
+.ai-chat-msg p:last-child { margin-bottom: 0; }
+.ai-chat-msg ul, .ai-chat-msg ol { padding-left: 1.2em; margin: 0.3em 0; }
+.ai-chat-msg li { margin: 0.15em 0; }
+.ai-chat-msg code { background: rgba(0,0,0,0.06); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.95em; }
+.dark .ai-chat-msg code { background: rgba(255,255,255,0.1); }
+.ai-chat-msg pre { background: rgba(0,0,0,0.06); padding: 0.6em; border-radius: 6px; overflow-x: auto; margin: 0.4em 0; }
+.dark .ai-chat-msg pre { background: rgba(255,255,255,0.06); }
+.ai-chat-msg pre code { background: none; padding: 0; }
+.ai-chat-msg h1, .ai-chat-msg h2, .ai-chat-msg h3, .ai-chat-msg h4 { font-weight: 600; margin: 0.5em 0 0.25em; }
+.ai-chat-msg h1 { font-size: 1em; }
+.ai-chat-msg h2 { font-size: 0.95em; }
+.ai-chat-msg h3 { font-size: 0.9em; }
+.ai-chat-msg blockquote { border-left: 2px solid var(--color-accent); padding-left: 0.6em; margin: 0.3em 0; opacity: 0.8; }
+.ai-chat-msg table { border-collapse: collapse; margin: 0.3em 0; font-size: 0.95em; width: 100%; }
+.ai-chat-msg th, .ai-chat-msg td { border: 1px solid var(--color-border); padding: 0.3em 0.5em; text-align: left; }
+.ai-chat-msg th { font-weight: 600; background: rgba(0,0,0,0.03); }
+.dark .ai-chat-msg th { background: rgba(255,255,255,0.03); }
+.ai-chat-msg strong { font-weight: 600; }
+
+.ai-chat-user-bg {
+  background: var(--color-accent);
+}
+.ai-chat-assistant-bg {
+  background: var(--color-bg);
+  border: 1px solid transparent;
+}
+.dark .ai-chat-user-bg {
+  background: var(--color-accent);
+}
+.dark .ai-chat-assistant-bg {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.editor-scroll-container {
+  scroll-behavior: smooth;
+}
+
+.ai-edit-highlight {
+  background: rgba(0, 122, 255, 0.12);
+  border-bottom: 2px solid rgba(0, 122, 255, 0.5);
+  border-radius: 2px;
+}
+
+.mermaid-container svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.mermaid-chat-preview svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.mermaid-error { padding: 0.5rem; text-align: center; color: #ef4444; font-size: 12px; }
+
+

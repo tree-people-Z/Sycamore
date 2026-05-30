@@ -62,15 +62,18 @@
     "lowlight": "^3.3.0",
     "lucide-react": "^1.16.0",
     "marked": "^18.0.4",
+    "mermaid": "^11.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tippy.js": "^6.3.7",
+    "tiptap-extension-mermaid": "^0.0.0",
     "turndown": "^7.2.4"
   },
   "devDependencies": {
     "@types/katex": "^0.16.8",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/turndown": "^5.0.6",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.7.0",

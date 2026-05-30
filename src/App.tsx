@@ -6,8 +6,10 @@ import WelcomePage from './components/WelcomePage'
 import Toolbar from './components/Toolbar'
 import StatusBar from './components/StatusBar'
 import Sidebar from './components/Sidebar'
+import AiChatPanel from './components/AiChatPanel'
 import SettingsPanel from './components/SettingsPanel'
 import FormulaDialog from './components/FormulaDialog'
+import ChartDialog from './components/ChartDialog'
 import Dialogs from './components/Dialogs'
 import { useTheme } from './hooks/useTheme'
 import { useFileSystem } from './hooks/useFileSystem'
@@ -37,10 +39,14 @@ function App() {
   const [imageUrlInput, setImageUrlInput] = useState('')
   const [showImageInput, setShowImageInput] = useState(false)
   const [showFormulaDialog, setShowFormulaDialog] = useState(false)
+  const [showChartDialog, setShowChartDialog] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [welcomeKey, setWelcomeKey] = useState(0)
   const [focusMode, setFocusMode] = useState(false)
   const [editorWide, setEditorWide] = useState(false)
+  const [aiChatOpen, setAiChatOpen] = useState(false)
+  const [selectedText, setSelectedText] = useState('')
+  const [docKey, setDocKey] = useState('untitled')
   const sidebarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const confirmUnsaved = useUnsavedGuard(
@@ -105,7 +111,8 @@ function App() {
     const fp = await showSaveDialog('untitled.md')
     if (!fp) return
     const md = editor.exportMarkdown()
-    await window.electronAPI?.writeFile(fp, md)
+    const note = '<!-- 由 Sycamore 导出。图片为外部链接，不在 Markdown 内嵌。 -->\n'
+    await window.electronAPI?.writeFile(fp, note + md)
   }, [showSaveDialog])
 
   const handleImportMarkdown = useCallback(async () => {
@@ -130,27 +137,31 @@ function App() {
     if (!entries) return
     const mdFiles = entries.filter(e => !e.isDirectory && /\.md$/i.test(e.name))
     if (mdFiles.length === 0) { window.alert('所选文件夹中没有 Markdown 文件'); return }
+    const baseDir = (linkedFolderPath || '').replace(/\\/g, '/') || await window.electronAPI?.getDefaultSaveDir()
+    if (!baseDir) return
+    const concurrency = 4
     let count = 0
-    for (const entry of mdFiles) {
-      const content = await window.electronAPI?.readFile(entry.path)
-      if (!content) continue
-      const json = await batchConvertMd(content)
-      const date = entry.mtime ? new Date(entry.mtime) : new Date()
-      const monthDir = `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月`
-      const baseDir = linkedFolderPath
-        ? linkedFolderPath.replace(/\\/g, '/')
-        : (await window.electronAPI?.getDefaultSaveDir())
-      if (!baseDir) continue
-      const dir = baseDir + '/' + monthDir
-      await window.electronAPI?.makeDirectory(dir)
-      let name = entry.name.replace(/\.md$/i, '.json')
-      let counter = 1
-      while (await window.electronAPI?.fileExists(dir + '/' + name)) {
-        name = entry.name.replace(/\.md$/i, '') + `(${counter}).json`
-        counter++
-      }
-      await window.electronAPI?.writeFile(dir + '/' + name, JSON.stringify(json, null, 2))
-      count++
+    const processBatch = async (batch: typeof mdFiles) => {
+      await Promise.all(batch.map(async (entry) => {
+        const content = await window.electronAPI?.readFile(entry.path)
+        if (!content) return
+        const json = await batchConvertMd(content)
+        const date = entry.mtime ? new Date(entry.mtime) : new Date()
+        const monthDir = `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月`
+        const dir = baseDir + '/' + monthDir
+        await window.electronAPI?.makeDirectory(dir)
+        let name = entry.name.replace(/\.md$/i, '.json')
+        let counter = 1
+        while (await window.electronAPI?.fileExists(dir + '/' + name)) {
+          name = entry.name.replace(/\.md$/i, '') + `(${counter}).json`
+          counter++
+        }
+        await window.electronAPI?.writeFile(dir + '/' + name, JSON.stringify(json, null, 2))
+        count++
+      }))
+    }
+    for (let i = 0; i < mdFiles.length; i += concurrency) {
+      await processBatch(mdFiles.slice(i, i + concurrency))
     }
     window.alert(`成功导入 ${count} 个文件`)
     handleRefreshFolder()
@@ -173,7 +184,7 @@ function App() {
         case 'undo': editor.undo(); break
         case 'redo': editor.redo(); break
         case 'cut': editor.focus(); document.execCommand('cut'); break
-        case 'copy': editor.focus(); document.execCommand('copy'); break
+        case 'copy': document.execCommand('copy'); break
         case 'paste': editor.focus(); document.execCommand('paste'); break
         case 'export-html': await handleExportHtml(); break
         case 'export-pdf': await handleExportPdf(); break
@@ -242,6 +253,14 @@ function App() {
       attrs: { tex: expression },
     })
     setShowFormulaDialog(false)
+  }, [])
+
+  const handleChartInsert = useCallback((content: string) => {
+    editorRef.current?.insertText({
+      type: 'codeBlock', attrs: { language: 'mermaid' },
+      content: [{ type: 'text', text: content }],
+    })
+    setShowChartDialog(false)
   }, [])
 
   const handleOpenFile = useCallback(async (filePath: string) => {
@@ -317,6 +336,8 @@ function App() {
         onExportMarkdown={() => { if (!showWelcome) handleExportMarkdown() }}
         onImportMarkdown={() => handleImportMarkdown()}
         onBatchImportMarkdown={() => handleBatchImportMarkdown()}
+        onToggleAiChat={() => setAiChatOpen(v => !v)}
+        onInsertChart={() => setShowChartDialog(true)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -341,8 +362,24 @@ function App() {
               onModifiedChange={setIsModified} onContentChange={handleContentChange}
               onWordCountChange={setWordCount} onLineCountChange={setLineCount}
               onShowSaveDialog={showSaveDialog} onShowOpenDialog={showOpenDialog}
-              onSaved={handleRefreshFolder} />
+              onSaved={handleRefreshFolder}
+              onDocChange={(fp) => setDocKey(fp || 'untitled')}
+              aiEditMode={aiChatOpen && selectedText.length > 0}
+              onSelectionChange={setSelectedText} />
           </div>
+          {aiChatOpen && <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/5 to-transparent pointer-events-none z-10" />}
+        </div>
+
+        <div className={`absolute right-0 top-0 bottom-0 w-[420px] z-20 bg-[var(--color-bg)] shadow-xl transition-all duration-500 ease-out ${
+          aiChatOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+        }`}
+          style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}>
+          <AiChatPanel onClose={() => setAiChatOpen(false)}
+            getDocumentContent={() => editorRef.current?.exportMarkdown?.() ?? editorRef.current?.getText?.() ?? ''}
+            selectedText={selectedText}
+            replaceSelection={(text) => editorRef.current?.replaceSelection?.(text)}
+            settings={settings} docKey={docKey}
+            insertText={(text) => editorRef.current?.insertText(text)} />
         </div>
       </div>
 
@@ -372,6 +409,9 @@ function App() {
 
       {showFormulaDialog && (
         <FormulaDialog onInsert={handleFormulaInsert} onClose={() => setShowFormulaDialog(false)} />
+      )}
+      {showChartDialog && (
+        <ChartDialog onInsert={handleChartInsert} onClose={() => setShowChartDialog(false)} />
       )}
 
       {showSettings && (

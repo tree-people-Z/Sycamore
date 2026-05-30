@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useCallback, useEffect, useState } from 'react'
 import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react'
+import { EditHighlightPlugin } from './extensions/edit-highlight'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Highlight from '@tiptap/extension-highlight'
@@ -8,7 +9,6 @@ import { Table } from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
@@ -18,12 +18,14 @@ import { MathInline } from './extensions/math-inline'
 import { MathBlock } from './extensions/math-block'
 import { MathInlineView } from './MathInlineView'
 import { MathBlockView } from './MathBlockView'
+import { CodeBlockLowlightMermaid } from 'tiptap-extension-mermaid'
 import { WikiLink } from './extensions/wiki-link'
 import { SlashMenu } from './extensions/slash-menu'
 import type { SlashMenuItem } from './extensions/slash-menu'
 import { CustomImage } from './extensions/image-extension'
 import SelectionToolbar from '../components/SelectionToolbar'
-import type { EditorSettings } from '../components/SettingsPanel'
+import type { EditorSettings } from '../constants'
+
 import { useAutoSave } from '../hooks/useAutoSave'
 import { applyEditorStyles } from '../utils/editor-styles'
 import { handleImageFile, insertImage, hasImageItems, getImageFiles } from '../utils/images'
@@ -38,7 +40,7 @@ export interface EditorHandle {
   getContent: () => Record<string, unknown>
   setContent: (content: Record<string, unknown> | string) => void
   setTitle: (title: string) => void
-  setFilePath: (filePath: string) => void
+  setFilePath: (filePath: string | null) => void
   clear: () => void
   getModified: () => boolean
   resetModified: () => void
@@ -50,14 +52,14 @@ export interface EditorHandle {
   undo: () => void
   redo: () => void
   focus: () => void
-  getWordCount: () => number
-  isEmpty: () => boolean
   formatInline: (type: string, url?: string) => void
   insertBlock: (type: string) => void
-  insertText: (text: string | Record<string, unknown>) => void
+  insertText: (text: string | Record<string, unknown>) => Promise<void>
   getExportHTML: () => string
   exportMarkdown: () => string
   importMarkdown: (markdown: string) => Promise<void>
+  getText: () => string
+  replaceSelection: (text: string) => Promise<void>
 }
 
 interface EditorProps {
@@ -72,10 +74,13 @@ interface EditorProps {
   onShowSaveDialog?: (defaultName?: string, startingPath?: string) => Promise<string | null>
   onShowOpenDialog?: (startingPath?: string) => Promise<string | null>
   onSaved?: () => void
+  onDocChange?: (filePath: string | null) => void
+  aiEditMode?: boolean
+  onSelectionChange?: (selectedText: string) => void
 }
 
 const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
-  { darkMode, settings, linkedFolderPath, focusMode, onContentChange, onModifiedChange, onWordCountChange, onLineCountChange, onShowSaveDialog, onShowOpenDialog, onSaved },
+  { darkMode, settings, linkedFolderPath, focusMode, onContentChange, onModifiedChange, onWordCountChange, onLineCountChange, onShowSaveDialog, onShowOpenDialog, onSaved, onDocChange, aiEditMode, onSelectionChange },
   ref,
 ) {
   const modifiedRef = useRef(false)
@@ -90,6 +95,12 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   onModifiedChangeRef.current = onModifiedChange
   const onSavedRef = useRef(onSaved)
   onSavedRef.current = onSaved
+  const onDocChangeRef = useRef(onDocChange)
+  onDocChangeRef.current = onDocChange
+  const onSelectionChangeRef = useRef(onSelectionChange)
+  onSelectionChangeRef.current = onSelectionChange
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
 
   const updateToolbar = useCallback((ed: ReturnType<typeof useEditor>) => {
     if (!ed) return
@@ -146,12 +157,12 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'editor-link' } }),
       Table.configure({ resizable: true }),
       TableRow, TableCell, TableHeader,
-      CodeBlockLowlight.configure({ lowlight }),
       Placeholder.configure({ placeholder: '开始写作...' }),
       TextStyle, Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       mathInlineWithView, mathBlockWithView, CustomImage,
-      WikiLink.configure({ onNavigate: (name) => console.log('Navigate to:', name) }),
+      CodeBlockLowlightMermaid.configure({ lowlight, mermaidConfig: {} }),
+      WikiLink.configure({}),
       SlashMenu.configure({
         items: ([
           { title: '标题 1', description: '大标题', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
@@ -170,6 +181,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           }},
         ] as SlashMenuItem[]).map(item => ({ ...item, icon: '' })),
       }),
+      EditHighlightPlugin,
     ],
     editorProps: {
       attributes: { class: 'prose-editor' },
@@ -187,7 +199,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       },
       handleDrop: (_view, event) => {
         const files = event.dataTransfer?.files
-        if (!files || files.length === 0) return false
+        if (!files || files.length === 0) { event.preventDefault(); return true }
         const imageFiles = getImageFiles(files)
         if (imageFiles.length) {
           event.preventDefault()
@@ -234,6 +246,12 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     onSelectionUpdate: ({ editor: ed }) => {
       updateToolbar(ed)
       updateFocusNode(ed)
+      const { from, to } = ed.state.selection
+      const selText = from !== to ? ed.state.doc.textBetween(from, to) : ''
+      onSelectionChangeRef.current?.(selText)
+      if (aiEditMode) {
+        ed.view.dispatch(ed.state.tr.setMeta('editHighlight', from !== to ? { from, to } : 'clear'))
+      }
     },
   })
 
@@ -252,6 +270,16 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       prevFocusNodeRef.current = null
     }
   }, [focusMode, editor]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!editor) return
+    if (aiEditMode) {
+      const { from, to } = editor.state.selection
+      if (from !== to) editor.view.dispatch(editor.state.tr.setMeta('editHighlight', { from, to }))
+    } else {
+      editor.view.dispatch(editor.state.tr.setMeta('editHighlight', 'clear'))
+    }
+  }, [aiEditMode, editor])
 
   const commitSave = useCallback(async () => {
     if (!editor) return
@@ -285,6 +313,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     modifiedRef.current = false
     onModifiedChangeRef.current?.(false)
     onSavedRef.current?.()
+    onDocChangeRef.current?.(fp)
   }, [editor, linkedFolderPath])
 
   useAutoSave(
@@ -313,8 +342,36 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       modifiedRef.current = false
       onModifiedChangeRef.current?.(false)
     },
+    getText: () => editor?.getText() ?? '',
+    getSelectedText: () => {
+      if (!editor) return ''
+      const { from, to } = editor.state.selection
+      if (from === to) return ''
+      return editor.state.doc.textBetween(from, to)
+    },
+    replaceSelection: async (text) => {
+      if (!editor) return
+      const mermaidMatch = text.match(/```mermaid\n([\s\S]*?)```/)
+      if (mermaidMatch) {
+        editor.chain().focus().deleteSelection().insertContent({
+          type: 'codeBlock', attrs: { language: 'mermaid' },
+          content: [{ type: 'text', text: mermaidMatch[1].trim() }],
+        }).run()
+        return
+      }
+      const html = await marked.parse(text)
+      const { from, to } = editor.state.selection
+      if (from === to) {
+        editor.commands.setContent(html as string)
+      } else {
+        editor.chain().focus().deleteSelection().insertContent(html as string).run()
+      }
+    },
     setTitle: (t: string) => { setTitle(t); titleRef.current = t },
-    setFilePath: (filePath: string) => { filePathRef.current = filePath },
+    setFilePath: (filePath: string | null) => {
+      filePathRef.current = filePath
+      onDocChangeRef.current?.(filePath)
+    },
     clear: () => {
       if (!editor) return
       setTitle(''); titleRef.current = ''
@@ -325,12 +382,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     getModified: () => modifiedRef.current,
     resetModified: () => { modifiedRef.current = false; onModifiedChangeRef.current?.(false) },
     getFilePath: () => filePathRef.current,
-    getWordCount: () => {
-      if (!editor) return 0
-      const text = editor.getText()
-      return text.trim() ? text.trim().replace(/\s+/g, '').length : 0
-    },
-    isEmpty: () => !editor || editor.isEmpty,
     newFile: async () => {
       if (!editor) return
       setTitle(''); titleRef.current = ''
@@ -338,6 +389,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       editor.commands.clearContent()
       modifiedRef.current = false; onModifiedChangeRef.current?.(false)
       filePathRef.current = null
+      onDocChangeRef.current?.(null)
     },
     openFile: async () => {
       if (!editor || !onShowOpenDialog) return
@@ -358,6 +410,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         filePathRef.current = filePath
       }
       modifiedRef.current = false; onModifiedChangeRef.current?.(false)
+      onDocChangeRef.current?.(/\.md$/i.test(filePath) ? null : filePath)
     },
     saveFile: async () => { await commitSave() },
     saveAs: async () => {
@@ -406,10 +459,33 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         hr: () => editor.chain().focus().setHorizontalRule().run(),
         table: () => editor.chain().focus().insertTable({ rows: 3, cols: 3 }).run(),
         math: () => editor.chain().focus().insertContent({ type: 'mathBlock', attrs: { tex: '\\frac{a}{b}' } }).run(),
+        mermaid: () => {
+          editor.chain().focus().insertContent({
+            type: 'codeBlock',
+            attrs: { language: 'mermaid' },
+            content: [{ type: 'text', text: 'graph TD\n  A[设计] --> B[实现]' }],
+          }).run()
+        },
       }
       map[type]?.()
     },
-    insertText: (text) => { if (editor) editor.chain().focus().insertContent(text).run() },
+    insertText: async (text) => {
+      if (!editor) return
+      if (typeof text === 'object') {
+        editor.chain().focus().insertContent(text).run()
+      } else {
+        const mermaidMatch = text.match(/```mermaid\n([\s\S]*?)```/)
+        if (mermaidMatch) {
+          editor.chain().focus().insertContent({
+            type: 'codeBlock', attrs: { language: 'mermaid' },
+            content: [{ type: 'text', text: mermaidMatch[1].trim() }],
+          }).run()
+          return
+        }
+        const html = await marked.parse(text)
+        editor.chain().focus().insertContent(html as string).run()
+      }
+    },
   }), [editor, commitSave, onShowSaveDialog, onShowOpenDialog])
 
   useEffect(() => {
@@ -499,5 +575,4 @@ markdownService.addRule('wikiLink', {
     return `[[${name}]]`
   },
 })
-
 export default Editor

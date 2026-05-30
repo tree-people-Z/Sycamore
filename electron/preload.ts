@@ -16,6 +16,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteEntry: (entryPath: string): Promise<boolean> =>
     ipcRenderer.invoke('deleteEntry', entryPath),
 
+  countDirectoryContents: (dirPath: string): Promise<number> =>
+    ipcRenderer.invoke('countDirectoryContents', dirPath),
+
+  listTrashItems: (parentPath: string): Promise<Array<{ name: string; path: string; isDirectory: boolean }>> =>
+    ipcRenderer.invoke('listTrashItems', parentPath),
+
+  restoreFromTrash: (trashPath: string, originalPath: string): Promise<string | null> =>
+    ipcRenderer.invoke('restoreFromTrash', { trashPath, originalPath }),
+
+  permanentDelete: (entryPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('permanentDelete', entryPath),
+
   renameEntry: (oldPath: string, newPath: string): Promise<boolean> =>
     ipcRenderer.invoke('renameEntry', { oldPath, newPath }),
 
@@ -30,15 +42,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getDefaultSaveDir: (): Promise<string> =>
     ipcRenderer.invoke('getDefaultSaveDir'),
-
-  getHomePath: (): Promise<string> =>
-    ipcRenderer.invoke('getHomePath'),
-
-  getSystemPath: (name: string): Promise<string | null> =>
-    ipcRenderer.invoke('getSystemPath', name),
-
-  getDrives: (): Promise<string[]> =>
-    ipcRenderer.invoke('getDrives'),
 
   exportPdfToPath: (filePath: string, html: string, darkMode: boolean): Promise<string | null> =>
     ipcRenderer.invoke('exportPdfToPath', { filePath, html, darkMode }),

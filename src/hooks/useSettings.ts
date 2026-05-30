@@ -1,13 +1,6 @@
 import { useState, useCallback } from 'react'
 import { SETTINGS_KEY, DEFAULT_SETTINGS } from '../constants'
-
-export interface EditorSettings {
-  fontSize: number
-  editorWidth: number
-  autoSave: boolean
-  autoSaveInterval: number
-  lineWrapping: boolean
-}
+import type { EditorSettings } from '../constants'
 
 export function loadSettings(): EditorSettings {
   try {

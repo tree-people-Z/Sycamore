@@ -268,12 +268,63 @@ ipcMain.handle('writeFile', async (_event, { filePath, content }: { filePath: st
 
 ipcMain.handle('deleteEntry', async (_event, entryPath: string) => {
   try {
-    const stat = await fs.stat(entryPath)
-    if (stat.isDirectory()) {
-      await fs.rm(entryPath, { recursive: true, force: true })
-    } else {
-      await fs.unlink(entryPath)
+    const parentDir = path.dirname(entryPath)
+    const trashDir = path.join(parentDir, '.trash')
+    await fs.mkdir(trashDir, { recursive: true })
+    await fs.rename(entryPath, path.join(trashDir, `${Date.now()}-${path.basename(entryPath)}`))
+    return true
+  } catch { return false }
+})
+
+ipcMain.handle('countDirectoryContents', async (_event, dirPath: string) => {
+  try {
+    let count = 0
+    async function walk(dir: string) {
+      const entries = await fs.readdir(dir, { withFileTypes: true })
+      for (const e of entries) {
+        if (e.name === '.trash') continue
+        if (e.isDirectory()) { await walk(path.join(dir, e.name)) }
+        else { count++ }
+      }
     }
+    await walk(dirPath)
+    return count
+  } catch { return 0 }
+})
+
+ipcMain.handle('listTrashItems', async (_event, parentPath: string) => {
+  try {
+    const trashDir = path.join(parentPath, '.trash')
+    const dirents = await fs.readdir(trashDir, { withFileTypes: true })
+    return dirents.map(e => ({
+      name: e.name.replace(/^\d+-/, ''),
+      path: path.join(trashDir, e.name),
+      isDirectory: e.isDirectory(),
+    }))
+  } catch { return [] }
+})
+
+ipcMain.handle('restoreFromTrash', async (_event, { trashPath, originalPath }: { trashPath: string; originalPath: string }) => {
+  try {
+    const ext = path.extname(originalPath)
+    const base = path.basename(originalPath, ext)
+    const parentDir = path.dirname(originalPath)
+    let restorePath = originalPath
+    let counter = 1
+    while (await fs.access(restorePath).then(() => true).catch(() => false)) {
+      restorePath = path.join(parentDir, `${base}(restored${counter})${ext}`)
+      counter++
+    }
+    await fs.rename(trashPath, restorePath)
+    return restorePath
+  } catch { return null }
+})
+
+ipcMain.handle('permanentDelete', async (_event, entryPath: string) => {
+  try {
+    const stat = await fs.stat(entryPath)
+    if (stat.isDirectory()) await fs.rm(entryPath, { recursive: true, force: true })
+    else await fs.unlink(entryPath)
     return true
   } catch { return false }
 })
@@ -308,30 +359,6 @@ ipcMain.handle('fileExists', async (_event, filePath: string) => {
 
 ipcMain.handle('getDefaultSaveDir', async () => {
   return path.join(app.getPath('documents'), 'Sycamore笔记')
-})
-
-ipcMain.handle('getHomePath', async () => {
-  return app.getPath('home')
-})
-
-ipcMain.handle('getSystemPath', async (_event, name: string) => {
-  try { return app.getPath(name as any) }
-  catch { return null }
-})
-
-ipcMain.handle('getDrives', async () => {
-  if (process.platform === 'win32') {
-    const drives: string[] = []
-    for (let i = 65; i <= 90; i++) {
-      const letter = String.fromCharCode(i)
-      try {
-        await fs.access(`${letter}:\\`)
-        drives.push(`${letter}:\\`)
-      } catch {}
-    }
-    return drives
-  }
-  return ['/']
 })
 
 ipcMain.handle('exportPdfToPath', async (_event, { filePath, html, darkMode }: { filePath: string; html: string; darkMode: boolean }) => {

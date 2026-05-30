@@ -23,6 +23,24 @@ export const DEFAULT_SETTINGS = {
   autoSave: true,
   autoSaveInterval: 30,
   lineWrapping: true,
+  apiBaseUrl: 'https://api.openai.com/v1',
+  apiKey: '',
+  apiModel: 'gpt-4o-mini',
+  apiMaxTokens: 4096,
+  apiTemperature: 0.7,
+}
+
+export interface EditorSettings {
+  fontSize: number
+  editorWidth: number
+  autoSave: boolean
+  autoSaveInterval: number
+  lineWrapping: boolean
+  apiBaseUrl: string
+  apiKey: string
+  apiModel: string
+  apiMaxTokens: number
+  apiTemperature: number
 }
 
 export function sanitizeFileName(title: string): string {

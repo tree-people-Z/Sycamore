@@ -1,4 +1,5 @@
 import { Check, Pencil, Eye, EyeOff, Maximize2, Minimize2 } from 'lucide-react'
+import { WORD_GOAL } from '../constants'
 
 interface StatusBarProps {
   wordCount: number
@@ -10,8 +11,6 @@ interface StatusBarProps {
   editorWide?: boolean
   onToggleEditorWidth?: () => void
 }
-
-const WORD_GOAL = 1000
 
 function ProgressRing({ current, max }: { current: number; max: number }) {
   const radius = 7
