@@ -16,6 +16,7 @@ export type BlockFormatType =
   | 'quote' | 'codeblock' | 'ul' | 'ol' | 'hr' | 'table'
   | 'math'
   | 'mermaid'
+  | 'taskList'
 
 export const HEADING_ENTRIES: { level: HeadingLevel; label: string; shortcut: string }[] = [
   { level: 'h1', label: 'Heading 1', shortcut: '#' },

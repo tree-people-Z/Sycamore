@@ -13,17 +13,21 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import { common, createLowlight } from 'lowlight'
 import { MathInline } from './extensions/math-inline'
 import { MathBlock } from './extensions/math-block'
+import { MermaidDiagram } from './extensions/mermaid-extension'
 import { MathInlineView } from './MathInlineView'
 import { MathBlockView } from './MathBlockView'
-import { CodeBlockLowlightMermaid } from 'tiptap-extension-mermaid'
 import { WikiLink } from './extensions/wiki-link'
 import { SlashMenu } from './extensions/slash-menu'
 import type { SlashMenuItem } from './extensions/slash-menu'
 import { CustomImage } from './extensions/image-extension'
 import SelectionToolbar from '../components/SelectionToolbar'
+import { emit } from '../utils/emitter'
 import type { EditorSettings } from '../constants'
 
 import { useAutoSave } from '../hooks/useAutoSave'
@@ -33,8 +37,6 @@ import { sanitizeFileName } from '../constants'
 import katex from 'katex'
 import TurndownService from 'turndown'
 import { marked } from 'marked'
-
-const lowlight = createLowlight(common)
 
 export interface EditorHandle {
   getContent: () => Record<string, unknown>
@@ -88,6 +90,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   const filePathRef = useRef<string | null>(null)
   const titleRef = useRef('')
   const prevFocusNodeRef = useRef<HTMLElement | null>(null)
+  const lowlight = createLowlight(common)
   const [title, setTitle] = useState('')
   const [selectionToolbarPos, setSelectionToolbarPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -99,13 +102,14 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   onDocChangeRef.current = onDocChange
   const onSelectionChangeRef = useRef(onSelectionChange)
   onSelectionChangeRef.current = onSelectionChange
-  const settingsRef = useRef(settings)
-  settingsRef.current = settings
 
   const updateToolbar = useCallback((ed: ReturnType<typeof useEditor>) => {
     if (!ed) return
     const sel = ed.state.selection
     if (sel.empty) { setSelectionToolbarPos(null); return }
+    // 选中原子节点（图表、公式等）时隐藏浮动工具栏
+    const node = ed.state.doc.nodeAt(sel.from)
+    if (node && node.type.isAtom && 'node' in sel) { setSelectionToolbarPos(null); return }
     const coords = ed.view.coordsAtPos(sel.from)
     if (!coords) { setSelectionToolbarPos(null); return }
     let top = coords.top - 44
@@ -149,6 +153,8 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     addNodeView() { return ReactNodeViewRenderer(MathInlineView) },
   })
 
+  const mermaidWithView = MermaidDiagram
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false, link: false, underline: false }),
@@ -160,9 +166,10 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       Placeholder.configure({ placeholder: '开始写作...' }),
       TextStyle, Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      mathInlineWithView, mathBlockWithView, CustomImage,
-      CodeBlockLowlightMermaid.configure({ lowlight, mermaidConfig: {} }),
+      CodeBlockLowlight.configure({ lowlight }),
+      mathInlineWithView, mathBlockWithView, mermaidWithView, CustomImage,
       WikiLink.configure({}),
+      TaskList, TaskItem.configure({ nested: true }),
       SlashMenu.configure({
         items: ([
           { title: '标题 1', description: '大标题', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
@@ -171,10 +178,12 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           { title: '引用', description: '引用文本', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleBlockquote().run() },
           { title: '无序列表', description: '项目列表', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleBulletList().run() },
           { title: '有序列表', description: '编号列表', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleOrderedList().run() },
+          { title: '任务列表', description: '待办事项', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleTaskList().run() },
           { title: '代码块', description: '代码片段', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleCodeBlock().run() },
           { title: '分割线', description: '水平分割线', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).setHorizontalRule().run() },
           { title: '表格', description: '插入表格', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3 }).run() },
           { title: '数学公式', description: '行内公式', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mathInline', attrs: { tex: '\\frac{a}{b}' } }).run() },
+          { title: '图表', description: 'Mermaid 图表', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mermaidDiagram', attrs: { code: 'graph TD\n  A[开始] --> B[结束]' } }).run() },
           { title: '图片', description: '插入图片', command: ({ editor: ed, range }) => {
             const url = prompt('输入图片 URL:')
             if (url) ed.chain().focus().deleteRange(range).setImage({ src: url }).run()
@@ -351,12 +360,22 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     },
     replaceSelection: async (text) => {
       if (!editor) return
-      const mermaidMatch = text.match(/```mermaid\n([\s\S]*?)```/)
-      if (mermaidMatch) {
-        editor.chain().focus().deleteSelection().insertContent({
-          type: 'codeBlock', attrs: { language: 'mermaid' },
-          content: [{ type: 'text', text: mermaidMatch[1].trim() }],
-        }).run()
+      const parts = text.split(/(```mermaid\n[\s\S]*?```)/)
+      const hasMermaid = parts.length > 1
+      if (hasMermaid) {
+        editor.chain().focus().deleteSelection().run()
+        for (const part of parts) {
+          if (!part.trim()) continue
+          const mermaidMatch = part.match(/```mermaid\n([\s\S]*?)```/)
+          if (mermaidMatch) {
+            editor.chain().focus().insertContent({
+              type: 'mermaidDiagram', attrs: { code: mermaidMatch[1].trim() },
+            }).run()
+          } else {
+            const html = await marked.parse(part)
+            editor.chain().focus().insertContent(html as string).run()
+          }
+        }
         return
       }
       const html = await marked.parse(text)
@@ -456,14 +475,14 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         codeblock: () => editor.chain().focus().toggleCodeBlock().run(),
         ul: () => editor.chain().focus().toggleBulletList().run(),
         ol: () => editor.chain().focus().toggleOrderedList().run(),
+        taskList: () => editor.chain().focus().toggleTaskList().run(),
         hr: () => editor.chain().focus().setHorizontalRule().run(),
         table: () => editor.chain().focus().insertTable({ rows: 3, cols: 3 }).run(),
         math: () => editor.chain().focus().insertContent({ type: 'mathBlock', attrs: { tex: '\\frac{a}{b}' } }).run(),
         mermaid: () => {
           editor.chain().focus().insertContent({
-            type: 'codeBlock',
-            attrs: { language: 'mermaid' },
-            content: [{ type: 'text', text: 'graph TD\n  A[设计] --> B[实现]' }],
+            type: 'mermaidDiagram',
+            attrs: { code: 'graph TD\n  A[设计] --> B[实现]' },
           }).run()
         },
       }
@@ -474,12 +493,21 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       if (typeof text === 'object') {
         editor.chain().focus().insertContent(text).run()
       } else {
-        const mermaidMatch = text.match(/```mermaid\n([\s\S]*?)```/)
-        if (mermaidMatch) {
-          editor.chain().focus().insertContent({
-            type: 'codeBlock', attrs: { language: 'mermaid' },
-            content: [{ type: 'text', text: mermaidMatch[1].trim() }],
-          }).run()
+        const parts = text.split(/(```mermaid\n[\s\S]*?```)/)
+        const hasMermaid = parts.length > 1
+        if (hasMermaid) {
+          for (const part of parts) {
+            if (!part.trim()) continue
+            const mermaidMatch = part.match(/```mermaid\n([\s\S]*?)```/)
+            if (mermaidMatch) {
+              editor.chain().focus().insertContent({
+                type: 'mermaidDiagram', attrs: { code: mermaidMatch[1].trim() },
+              }).run()
+            } else {
+              const html = await marked.parse(part)
+              editor.chain().focus().insertContent(html as string).run()
+            }
+          }
           return
         }
         const html = await marked.parse(text)
@@ -498,23 +526,25 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
 
   return (
     <div className="h-full w-full overflow-y-auto editor-scroll-container">
-      <input
-        type="text"
-        className="cm-title-input"
-        placeholder="标题"
-        value={title}
-        onChange={(e) => {
-          setTitle(e.target.value); titleRef.current = e.target.value
-          modifiedRef.current = true
-          onModifiedChangeRef.current?.(true)
-        }}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); editor?.commands.focus() } }}
-        style={{
-          display: 'block', width: '100%', maxWidth: 'var(--editor-max-width)',
-          margin: '0 auto', padding: '24px 48px 16px',
-          fontSize: `${(settings?.fontSize || 18) + 6}px`, fontWeight: 700, textAlign: 'center',
-        }}
-      />
+      <div style={{ maxWidth: 'var(--editor-max-width)', margin: '0 auto', position: 'relative' }}>
+        <input
+          type="text"
+          className="cm-title-input"
+          placeholder="标题"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value); titleRef.current = e.target.value
+            modifiedRef.current = true
+            onModifiedChangeRef.current?.(true)
+          }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); editor?.commands.focus() } }}
+          style={{
+            display: 'block', width: '100%', padding: '24px 48px 16px',
+            fontSize: `${(settings?.fontSize || 18) + 6}px`, fontWeight: 700, textAlign: 'center', border: 'none',
+          }}
+        />
+
+      </div>
       <EditorContent editor={editor} className={`editor-content${focusMode ? ' focus-mode' : ''}`} />
       {selectionToolbarPos && editor && (
         <SelectionToolbar
@@ -529,6 +559,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           onCode={() => editor.chain().focus().toggleCode().run()}
           onLink={() => { const url = prompt('输入链接 URL:'); if (url) editor.chain().focus().setLink({ href: url }).run() }}
           onClose={() => setSelectionToolbarPos(null)}
+          onAi={() => emit('open-ai-chat')}
         />
       )}
     </div>
@@ -543,6 +574,9 @@ function renderMathForExport(html: string): string {
   html = html.replace(/<span data-math-inline="([^"]*?)"><\/span>/g, (_, tex: string) => {
     try { return katex.renderToString(tex, { displayMode: false, throwOnError: true, output: 'html' }) }
     catch { return `<code>$${tex}$</code>` }
+  })
+  html = html.replace(/<div data-mermaid-code="([^"]*?)" data-type="mermaid-diagram"><\/div>/g, (_, code: string) => {
+    return `<pre><code class="language-mermaid">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`
   })
   return html
 }
@@ -573,6 +607,28 @@ markdownService.addRule('wikiLink', {
   replacement: (_content, node) => {
     const name = (node as HTMLElement).getAttribute('data-wiki-link') || ''
     return `[[${name}]]`
+  },
+})
+markdownService.addRule('taskList', {
+  filter: 'ul',
+  replacement: (_content, node) => {
+    const ul = node as HTMLElement
+    if (ul.getAttribute('data-type') !== 'taskList') return ''
+    let md = ''
+    ul.childNodes.forEach(li => {
+      const liEl = li as HTMLElement
+      const checked = liEl.getAttribute('data-checked') === 'true'
+      const text = liEl.textContent || ''
+      md += `- ${checked ? '[x]' : '[ ]'} ${text.trim()}\n`
+    })
+    return md
+  },
+})
+markdownService.addRule('mermaidDiagram', {
+  filter: (node) => node.nodeType === 1 && (node as HTMLElement).getAttribute('data-mermaid-code') !== null,
+  replacement: (_content, node) => {
+    const code = (node as HTMLElement).getAttribute('data-mermaid-code') || ''
+    return `\n\`\`\`mermaid\n${code}\n\`\`\`\n`
   },
 })
 export default Editor

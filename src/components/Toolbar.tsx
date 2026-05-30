@@ -5,7 +5,7 @@ import {
   Type, Quote, List, ListOrdered,
   Table, Image, Minus, FileCode, Undo2, Redo2,
   Sigma, MoreHorizontal, Settings, Home, BarChart3,
-  Highlighter, FileDown, FileUp, Palette, MessageSquare,
+  Highlighter, FileDown, FileUp, Palette, MessageSquare, CheckSquare,
 } from 'lucide-react'
 import type { InlineFormatType, BlockFormatType } from '../types'
 import { HEADING_ENTRIES } from '../types'
@@ -183,7 +183,9 @@ function Toolbar({
       <button onClick={() => onBlock?.('quote')} className={btn} title="引用"><Quote size={14} /></button>
       <button onClick={() => onBlock?.('ul')} className={btn} title="无序列表"><List size={14} /></button>
       <button onClick={() => onBlock?.('ol')} className={btn} title="有序列表"><ListOrdered size={14} /></button>
+      <button onClick={() => onBlock?.('taskList')} className={btn} title="任务列表"><CheckSquare size={14} /></button>
       <button onClick={() => onBlock?.('codeblock')} className={btn} title="代码块"><FileCode size={14} /></button>
+      <button onClick={() => onBlock?.('hr')} className={btn} title="分隔线"><Minus size={14} /></button>
 
       <div className={separator} />
 
@@ -207,13 +209,6 @@ function Toolbar({
             >
               <Image size={14} className="text-[var(--color-text-secondary)]" />
               <span>插入图片</span>
-            </button>
-            <button
-              onClick={() => { onBlock?.('hr'); setShowMoreMenu(false) }}
-              className="w-full px-3 py-2 text-xs text-left text-[var(--color-text)] hover:bg-[var(--color-hover)] flex items-center gap-2.5 transition-colors"
-            >
-              <Minus size={14} className="text-[var(--color-text-secondary)]" />
-              <span>分隔线</span>
             </button>
             <button
               onClick={() => { onBlock?.('math'); setShowMoreMenu(false) }}

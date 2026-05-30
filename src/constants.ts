@@ -28,6 +28,9 @@ export const DEFAULT_SETTINGS = {
   apiModel: 'gpt-4o-mini',
   apiMaxTokens: 4096,
   apiTemperature: 0.7,
+  enableCondense: true,
+  keepLatestCount: 5,
+  condenseModel: '',
 }
 
 export interface EditorSettings {
@@ -41,6 +44,9 @@ export interface EditorSettings {
   apiModel: string
   apiMaxTokens: number
   apiTemperature: number
+  enableCondense: boolean
+  keepLatestCount: number
+  condenseModel: string
 }
 
 export function sanitizeFileName(title: string): string {

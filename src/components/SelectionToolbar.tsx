@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Bold, Italic, Strikethrough, Underline, Highlighter, Code, Link2,
-  Check, Palette,
+  Check, Palette, Sparkles,
 } from 'lucide-react'
 import { COLORS } from '../constants'
 
@@ -17,11 +17,12 @@ interface SelectionToolbarProps {
   onCode: () => void
   onLink: (url: string) => void
   onClose: () => void
+  onAi?: () => void
 }
 
 function SelectionToolbar({
   top, left, onBold, onItalic, onStrikethrough, onUnderline,
-  onHighlight, onColor, onCode, onLink, onClose,
+  onHighlight, onColor, onCode, onLink, onClose, onAi,
 }: SelectionToolbarProps) {
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -49,6 +50,11 @@ function SelectionToolbar({
       className="fixed z-[100] flex items-center gap-0.5 bg-[var(--color-surface)] rounded-lg shadow-xl border border-[var(--color-border)] px-1 py-1 selection-toolbar"
       style={{ top: `${top}px`, left: `${left}px` }}
     >
+      {onAi && (
+          <button onClick={() => { onAi(); onClose() }} className={`${btn} ai-btn`} title="AI 提问、润色、翻译、续写…">
+          <Sparkles size={14} className="text-[var(--color-accent)]" />
+        </button>
+      )}
       <button onClick={() => { onBold(); onClose() }} className={btn} title="加粗"><Bold size={14} /></button>
       <button onClick={() => { onItalic(); onClose() }} className={btn} title="斜体"><Italic size={14} /></button>
       <button onClick={() => { onStrikethrough(); onClose() }} className={btn} title="删除线"><Strikethrough size={14} /></button>

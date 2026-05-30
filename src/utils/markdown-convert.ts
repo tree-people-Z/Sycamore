@@ -8,12 +8,15 @@ import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
 import { common, createLowlight } from 'lowlight'
 import { MathInline } from '../editor/extensions/math-inline'
 import { MathBlock } from '../editor/extensions/math-block'
+import { MermaidDiagram } from '../editor/extensions/mermaid-extension'
 import { WikiLink } from '../editor/extensions/wiki-link'
 import { CustomImage } from '../editor/extensions/image-extension'
 import { marked } from 'marked'
@@ -30,7 +33,8 @@ const extensions = [
   CodeBlockLowlight.configure({ lowlight }),
   TextStyle, Color,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
-  MathInline, MathBlock, CustomImage, WikiLink,
+  MathInline, MathBlock, MermaidDiagram, CustomImage, WikiLink,
+  TaskList, TaskItem.configure({ nested: true }),
 ]
 
 export async function batchConvertMd(markdown: string): Promise<Record<string, unknown>> {

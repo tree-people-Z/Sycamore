@@ -18,6 +18,7 @@ import { useUnsavedGuard } from './hooks/useUnsavedGuard'
 import { useDialogs } from './hooks/useDialogs'
 import type { InlineFormatType, BlockFormatType } from './types'
 import { batchConvertMd } from './utils/markdown-convert'
+import { on } from './utils/emitter'
 
 function App() {
   const editorRef = useRef<EditorHandle>(null)
@@ -65,6 +66,11 @@ function App() {
     document.addEventListener('mouseout', handle)
     return () => document.removeEventListener('mouseout', handle)
   }, [sidebarPinned])
+
+  // 浮动能工具栏 AI 按钮 → 打开 AI 面板
+  useEffect(() => {
+    return on('open-ai-chat', () => setAiChatOpen(true))
+  }, [])
 
   useEffect(() => {
     const handle = (e: MouseEvent) => {
@@ -257,8 +263,7 @@ function App() {
 
   const handleChartInsert = useCallback((content: string) => {
     editorRef.current?.insertText({
-      type: 'codeBlock', attrs: { language: 'mermaid' },
-      content: [{ type: 'text', text: content }],
+      type: 'mermaidDiagram', attrs: { code: content },
     })
     setShowChartDialog(false)
   }, [])
@@ -337,7 +342,7 @@ function App() {
         onImportMarkdown={() => handleImportMarkdown()}
         onBatchImportMarkdown={() => handleBatchImportMarkdown()}
         onToggleAiChat={() => setAiChatOpen(v => !v)}
-        onInsertChart={() => setShowChartDialog(true)}
+        onInsertChart={() => { if (!showWelcome) setShowChartDialog(true) }}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -378,7 +383,7 @@ function App() {
             getDocumentContent={() => editorRef.current?.exportMarkdown?.() ?? editorRef.current?.getText?.() ?? ''}
             selectedText={selectedText}
             replaceSelection={(text) => editorRef.current?.replaceSelection?.(text)}
-            settings={settings} docKey={docKey}
+            settings={settings} docKey={showWelcome ? '__welcome__' : docKey}
             insertText={(text) => editorRef.current?.insertText(text)} />
         </div>
       </div>

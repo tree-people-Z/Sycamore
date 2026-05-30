@@ -577,6 +577,65 @@ body {
 .dark .ai-chat-msg th { background: rgba(255,255,255,0.03); }
 .ai-chat-msg strong { font-weight: 600; }
 
+/* 消息入场动画 */
+.ai-chat-msg {
+  animation: msgSlideIn 0.2s ease-out;
+}
+@keyframes msgSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 打字指示器 */
+.ai-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  animation: typingBounce 1.4s infinite ease-in-out;
+}
+.ai-typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.ai-typing-dot:nth-child(3) { animation-delay: 0.32s; }
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* 对话列表下拉动画 */
+.conv-list-dropdown {
+  animation: dropdownIn 0.15s ease-out;
+}
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 浮动工具栏入场动画 */
+.selection-toolbar {
+  animation: toolbarIn 0.15s ease-out;
+}
+@keyframes toolbarIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.selection-toolbar .ai-btn {
+  color: var(--color-accent);
+  animation: sparklePulse 2s ease-in-out infinite;
+}
+@keyframes sparklePulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* 弹窗入场动画 */
+.dialog-panel {
+  animation: dialogIn 0.2s ease-out;
+}
+@keyframes dialogIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .ai-chat-user-bg {
   background: var(--color-accent);
 }
@@ -602,8 +661,260 @@ body {
   border-radius: 2px;
 }
 
-.mermaid-container svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
-.mermaid-chat-preview svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.mermaid-container { overflow-x: auto; }
+.mermaid-container svg { max-width: none; height: auto; display: block; margin: 0 auto; }
+.mermaid-chat-preview { overflow-x: auto; }
+.mermaid-chat-preview svg { max-width: none; height: auto; display: block; margin: 0 auto; }
 .mermaid-error { padding: 0.5rem; text-align: center; color: #ef4444; font-size: 12px; }
+
+/* Mermaid 图表节点样式（移植自 note-gen） */
+.mermaid-diagram-wrapper {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+.mermaid-diagram-wrapper .mermaid-preview {
+  min-height: 60px;
+  position: relative;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  transition: border-color 0.15s;
+}
+.mermaid-diagram-wrapper .mermaid-preview:hover {
+  border-color: var(--color-accent);
+}
+.mermaid-diagram-wrapper .mermaid-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.mermaid-diagram-wrapper .mermaid-preview:hover .mermaid-overlay {
+  opacity: 1;
+}
+.mermaid-diagram-wrapper .mermaid-svg {
+  overflow-x: auto;
+  padding: 12px;
+}
+.mermaid-diagram-wrapper .mermaid-svg svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.mermaid-diagram-wrapper .mermaid-svg text {
+  font-family: inherit !important;
+  fill: var(--color-text);
+}
+.mermaid-diagram-wrapper .mermaid-svg .node rect,
+.mermaid-diagram-wrapper .mermaid-svg .node circle,
+.mermaid-diagram-wrapper .mermaid-svg .node polygon,
+.mermaid-diagram-wrapper .mermaid-svg .node path {
+  fill: var(--color-surface);
+  stroke: var(--color-border);
+  stroke-width: 1px;
+}
+.mermaid-diagram-wrapper .mermaid-svg .edgePath .path {
+  stroke: var(--color-text);
+  stroke-width: 2px;
+}
+.mermaid-diagram-wrapper .mermaid-svg .edgeLabel {
+  background-color: var(--color-bg);
+}
+.mermaid-diagram-wrapper .mermaid-svg .titleText {
+  fill: var(--color-text);
+  font-weight: 600;
+}
+.mermaid-diagram-wrapper .mermaid-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.mermaid-diagram-wrapper .mermaid-error-content {
+  padding: 16px;
+  text-align: center;
+}
+.mermaid-diagram-wrapper .mermaid-error-title {
+  color: #ef4444;
+  font-weight: 500;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.mermaid-diagram-wrapper .mermaid-error-detail {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.mermaid-diagram-wrapper .mermaid-error-hint {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  margin-top: 8px;
+}
+.mermaid-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mermaid-edit-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+.mermaid-editor {
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.mermaid-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.mermaid-type-select {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+  cursor: pointer;
+}
+.mermaid-type-select:focus {
+  border-color: var(--color-accent);
+}
+.mermaid-editor-spacer {
+  flex: 1;
+}
+.mermaid-save-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mermaid-save-btn:hover {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+.mermaid-textarea {
+  width: 100%;
+  height: 180px;
+  padding: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: none;
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+}
+.mermaid-edit-error {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #ef4444;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+/* Task List 样式（移植 note-gen） */
+.editor-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.editor-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.7;
+}
+.editor-content ul[data-type="taskList"] li > label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  position: relative;
+}
+.editor-content ul[data-type="taskList"] li > label input[type="checkbox"] {
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+}
+.editor-content ul[data-type="taskList"] li > label > span {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 3px !important;
+  background-color: transparent !important;
+  transition: all 0.15s ease !important;
+  box-sizing: border-box !important;
+}
+.editor-content ul[data-type="taskList"] li > label > span:hover {
+  border-color: var(--color-accent) !important;
+}
+.editor-content ul[data-type="taskList"] li[data-checked="true"] > label > span {
+  background-color: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+}
+.editor-content ul[data-type="taskList"] li[data-checked="true"] > label > span::before {
+  display: block;
+  width: 6px;
+  height: 10px;
+  background-color: transparent;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  margin-top: -2px;
+  content: '';
+}
+.editor-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+.editor-content ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+.editor-content ul[data-type="taskList"] ul[data-type="taskList"] {
+  margin-left: 0;
+}
+.editor-content ul[data-type="taskList"] ul[data-type="taskList"] li {
+  margin-left: 24px;
+}
 
 
