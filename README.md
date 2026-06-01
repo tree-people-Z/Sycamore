@@ -2,22 +2,28 @@
 <img width="1920" height="1050" alt="屏幕截图 2026-05-23 004628" src="https://github.com/user-attachments/assets/2fd075d5-3f4a-4119-bba1-4f755c7dc29d" />
 <img width="1920" height="1050" alt="屏幕截图 2026-05-23 004640" src="https://github.com/user-attachments/assets/f0411617-4fb7-4386-9dc7-facdc20dd353" />
 <img width="1920" height="1050" alt="屏幕截图 2026-05-23 005544" src="https://github.com/user-attachments/assets/426ff2b8-8f89-44bc-a858-e31eb6742451" />
+
 # Sycamore
 
-一个基于 Electron + React + Tiptap 的现代化桌面富文本编辑器，提供流畅的所见即所得编辑体验，支持表格、代码高亮、LaTeX 公式等功能。
+一个基于 Electron + React + Tiptap 的现代化桌面富文本编辑器，提供流畅的所见即所得编辑体验，集成 AI 对话、图表绘制等功能。
 
 ## 功能特性
 
 - **富文本编辑** — 基于 Tiptap 的 WYSIWYG 编辑体验，支持 Markdown 快捷输入
-- **表格支持** — 插入和编辑表格
+- **AI 对话** — 集成 OpenAI API 的内联 AI 聊天面板，支持对话历史与上下文压缩
+- **Mermaid 图表** — 在编辑器中直接插入和渲染 Mermaid 流程图、时序图等
+- **图表绘制** — 通过 ChartDialog 插入数据驱动的可视化图表
+- **表格支持** — 插入和编辑表格，支持合并单元格
 - **代码高亮** — 基于 lowlight 的语法高亮，支持多种编程语言
 - **LaTeX 公式** — 内联和块级数学公式渲染（基于 KaTeX）
+- **任务列表** — 支持勾选任务项的待办列表
 - **图片 & 链接** — 插入图片 URL 和内联链接
+- **Markdown 导入/导出** — 导入 Markdown 文件，或将文档导出为 Markdown、HTML、PDF
 - **文本格式化** — 加粗、斜体、下划线、删除线、颜色、高亮、对齐方式
 - **斜杠菜单** — 输入 `/` 快速插入各种内容块
 - **Wiki 链接** — 支持 `[[内部链接]]` 语法
+- **编辑高亮** — 编辑区域实时高亮显示
 - **文件管理** — 侧边栏浏览文件，新建、打开、保存笔记，支持文件夹链接
-- **导出** — 导出为 HTML 或 PDF
 - **多主题** — 亮色 / 暗色 / Sycamore 三种主题切换
 - **专注模式** — 隐藏工具栏和状态栏，专注写作
 - **自动保存** — 可配置的自动保存间隔
@@ -30,6 +36,8 @@
 - **构建**: Vite + vite-plugin-electron
 - **样式**: Tailwind CSS
 - **图标**: Lucide React
+- **AI**: OpenAI API (自定义端点)
+- **图表**: Mermaid
 - **公式**: KaTeX
 - **代码高亮**: lowlight
 
@@ -48,23 +56,19 @@ npm install
 
 ### 开发
 
-```bash
-npm run dev
-```
-
 启动 Vite 开发服务器：
 
 ```bash
 npm run dev
 ```
 
-启动 Electron 应用（先构建再启动）：
+启动 Electron 应用：
 
 ```bash
 npm run electron:dev
 ```
 
-或同时启动 Vite + Electron（使用 concurrently）：
+或同时启动 Vite + Electron：
 
 ```bash
 npm start
@@ -76,13 +80,22 @@ npm start
 npm run build
 ```
 
+打包为 Windows 安装包：
+
+```bash
+npm run pack
+```
+
 ## 使用
 
 1. 启动应用后，在欢迎页面点击「新建笔记」或「打开文件」
 2. 使用顶部工具栏进行格式化操作
 3. 在编辑器中输入 `/` 唤出斜杠菜单快速插入内容块
-4. 使用侧边栏浏览和管理文件（可链接到本地文件夹）
-5. 通过状态栏切换专注模式或调整编辑器宽度
+4. 选中文本后弹出浮动工具栏进行快速格式化
+5. 使用侧边栏浏览和管理文件（可链接到本地文件夹）
+6. 通过 AI 聊天面板与 OpenAI 模型对话，辅助写作
+7. 插入 ````mermaid` 代码块绘制流程图和图表
+8. 通过状态栏切换专注模式或调整编辑器宽度
 
 ## 许可证
 

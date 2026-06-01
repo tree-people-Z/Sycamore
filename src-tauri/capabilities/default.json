@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicepkg/vscode-tauri/main/schemas/tauri.conf.schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for Sycamore",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "dialog:default",
+    "shell:default"
+  ]
+}

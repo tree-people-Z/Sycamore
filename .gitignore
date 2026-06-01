@@ -9,3 +9,4 @@ dist-electron/
 release/
 build/
 build-assets/tmp/
+src-tauri/target/

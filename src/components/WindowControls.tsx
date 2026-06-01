@@ -12,7 +12,7 @@ function WindowControls() {
   }, [])
 
   return (
-    <div className="flex" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+    <div className="flex">
       <button
         onClick={() => window.electronAPI?.windowMinimize()}
         className="w-11 h-full flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] active:bg-[var(--color-hover)] transition-colors"

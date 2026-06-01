@@ -316,13 +316,13 @@ function App() {
   return (
     <div className="h-screen w-screen bg-[var(--color-bg)] flex flex-col">
       <div className="titlebar h-10 w-full flex-shrink-0 flex items-center bg-[var(--color-bg)] border-b border-[var(--color-border)]"
-        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+        data-tauri-drag-region>
         <div className="flex-1" />
         <div className="flex items-center justify-center gap-2 absolute left-1/2 -translate-x-1/2">
           <Leaf size={13} className="text-[var(--color-accent)]" />
           <span className="text-xs text-[var(--color-text-secondary)] select-none font-medium tracking-wide">Sycamore</span>
         </div>
-        <div className="h-full flex" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div className="h-full flex">
           <WindowControls />
         </div>
       </div>
