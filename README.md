@@ -5,7 +5,7 @@
 
 # Sycamore
 
-一个基于 Electron + React + Tiptap 的现代化桌面富文本编辑器，提供流畅的所见即所得编辑体验，集成 AI 对话、图表绘制等功能。
+一个基于 Tauri + React + Tiptap 的现代化桌面富文本编辑器，提供流畅的所见即所得编辑体验，集成 AI 对话、图表绘制等功能。
 
 ## 功能特性
 
@@ -31,9 +31,10 @@
 
 ## 技术栈
 
-- **框架**: Electron + React 18 + TypeScript
+- **框架**: Tauri + React 18 + TypeScript
+- **后端**: Rust
 - **编辑器**: Tiptap (ProseMirror)
-- **构建**: Vite + vite-plugin-electron
+- **构建**: Vite + Tauri CLI
 - **样式**: Tailwind CSS
 - **图标**: Lucide React
 - **AI**: OpenAI API (自定义端点)
@@ -47,6 +48,7 @@
 
 - Node.js >= 18
 - npm >= 9
+- Rust 工具链 (https://rustup.rs)
 
 ### 安装
 
@@ -56,34 +58,22 @@ npm install
 
 ### 开发
 
-启动 Vite 开发服务器：
+启动 Vite 开发服务器（仅前端）：
 
 ```bash
 npm run dev
 ```
 
-启动 Electron 应用：
+启动 Tauri 桌面应用：
 
 ```bash
-npm run electron:dev
-```
-
-或同时启动 Vite + Electron：
-
-```bash
-npm start
+npm run tauri:dev
 ```
 
 ### 构建
 
 ```bash
-npm run build
-```
-
-打包为 Windows 安装包：
-
-```bash
-npm run pack
+npm run tauri:build
 ```
 
 ## 使用
