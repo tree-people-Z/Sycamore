@@ -11,16 +11,20 @@ import SettingsPanel from './components/SettingsPanel'
 import FormulaDialog from './components/FormulaDialog'
 import ChartDialog from './components/ChartDialog'
 import Dialogs from './components/Dialogs'
+import ToastContainer from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
 import { useFileSystem } from './hooks/useFileSystem'
 import { useSettings } from './hooks/useSettings'
 import { useUnsavedGuard } from './hooks/useUnsavedGuard'
 import { useDialogs } from './hooks/useDialogs'
+import { useToast } from './hooks/useToast'
+import { useAppUIState } from './hooks/useAppUIState'
 import type { InlineFormatType, BlockFormatType } from './types'
 import { batchConvertMd } from './utils/markdown-convert'
 import { on } from './utils/emitter'
 
 function App() {
+  const { toasts, addToast, removeToast } = useToast()
   const editorRef = useRef<EditorHandle>(null)
   const { theme, darkMode, cycleTheme } = useTheme()
   const { settings, handleSettingsChange } = useSettings()
@@ -30,24 +34,19 @@ function App() {
     handleLinkFolder, handleUnlinkFolder, handleRefreshFolder,
   } = useFileSystem(showFolderDialog)
 
+  const {
+    ui,
+    setShowWelcome, setSidebarVisible, setSidebarPinned,
+    toggleFocusMode, toggleEditorWide, toggleAiChat, openAiChat,
+    setShowSettings, setShowFormulaDialog, setShowChartDialog,
+    setShowImageInput, setImageUrlInput, setSelectedText,
+    incrementWelcomeKey, setDocKey,
+  } = useAppUIState()
+
   const [isModified, setIsModified] = useState(false)
-  const [showWelcome, setShowWelcome] = useState(true)
   const [wordCount, setWordCount] = useState(0)
   const [lineCount, setLineCount] = useState(0)
-  const [sidebarVisible, setSidebarVisible] = useState(false)
-  const [sidebarPinned, setSidebarPinned] = useState(false)
   const [hasContent, setHasContent] = useState(false)
-  const [imageUrlInput, setImageUrlInput] = useState('')
-  const [showImageInput, setShowImageInput] = useState(false)
-  const [showFormulaDialog, setShowFormulaDialog] = useState(false)
-  const [showChartDialog, setShowChartDialog] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [welcomeKey, setWelcomeKey] = useState(0)
-  const [focusMode, setFocusMode] = useState(false)
-  const [editorWide, setEditorWide] = useState(false)
-  const [aiChatOpen, setAiChatOpen] = useState(false)
-  const [selectedText, setSelectedText] = useState('')
-  const [docKey, setDocKey] = useState('untitled')
   const sidebarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const confirmUnsaved = useUnsavedGuard(
@@ -58,32 +57,31 @@ function App() {
 
   useEffect(() => {
     const handle = (e: MouseEvent) => {
-      if (!e.relatedTarget && !sidebarPinned) {
+      if (!e.relatedTarget && !ui.sidebarPinned) {
         if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current)
         setSidebarVisible(false)
       }
     }
     document.addEventListener('mouseout', handle)
     return () => document.removeEventListener('mouseout', handle)
-  }, [sidebarPinned])
+  }, [ui.sidebarPinned, setSidebarVisible])
 
-  // 浮动能工具栏 AI 按钮 → 打开 AI 面板
   useEffect(() => {
-    return on('open-ai-chat', () => setAiChatOpen(true))
-  }, [])
+    return on('open-ai-chat', () => openAiChat())
+  }, [openAiChat])
 
   useEffect(() => {
     const handle = (e: MouseEvent) => {
       const sidebar = document.querySelector('.sidebar-panel')
       const toggleBtn = (e.target as HTMLElement)?.closest?.('[data-sidebar-toggle]')
-      if (sidebarPinned && sidebar && !sidebar.contains(e.target as Node) && !toggleBtn) {
+      if (ui.sidebarPinned && sidebar && !sidebar.contains(e.target as Node) && !toggleBtn) {
         setSidebarPinned(false)
         setSidebarVisible(false)
       }
     }
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
-  }, [sidebarPinned])
+  }, [ui.sidebarPinned, setSidebarPinned, setSidebarVisible])
 
   const handleExit = useCallback(async () => {
     if (await confirmUnsaved()) await window.electronAPI?.quitApp()
@@ -99,9 +97,9 @@ function App() {
     const fp = await showSaveDialog('untitled.html')
     if (!fp) return
     const html = editor.getExportHTML()
-    const doc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"></head><body>${html}</body></html>`
-    await window.electronAPI?.writeFile(fp, doc)
-  }, [showSaveDialog])
+    const doc = await window.electronAPI?.buildExportHtml(html, darkMode)
+    if (doc) await window.electronAPI?.writeFile(fp, doc)
+  }, [showSaveDialog, darkMode])
 
   const handleExportPdf = useCallback(async () => {
     const editor = editorRef.current
@@ -134,7 +132,7 @@ function App() {
     await editor.importMarkdown(content)
     const fileName = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
     editor.setTitle(fileName)
-  }, [showOpenDialog])
+  }, [showOpenDialog, setShowWelcome])
 
   const handleBatchImportMarkdown = useCallback(async () => {
     const fp = await showFolderDialog()
@@ -142,7 +140,7 @@ function App() {
     const entries = await window.electronAPI?.readDirectory(fp)
     if (!entries) return
     const mdFiles = entries.filter(e => !e.isDirectory && /\.md$/i.test(e.name))
-    if (mdFiles.length === 0) { window.alert('所选文件夹中没有 Markdown 文件'); return }
+    if (mdFiles.length === 0) { addToast('所选文件夹中没有 Markdown 文件', 'info'); return }
     const baseDir = (linkedFolderPath || '').replace(/\\/g, '/') || await window.electronAPI?.getDefaultSaveDir()
     if (!baseDir) return
     const concurrency = 4
@@ -169,9 +167,9 @@ function App() {
     for (let i = 0; i < mdFiles.length; i += concurrency) {
       await processBatch(mdFiles.slice(i, i + concurrency))
     }
-    window.alert(`成功导入 ${count} 个文件`)
+    addToast(`成功导入 ${count} 个文件`, 'success')
     handleRefreshFolder()
-  }, [showFolderDialog, linkedFolderPath, handleRefreshFolder])
+  }, [showFolderDialog, linkedFolderPath, handleRefreshFolder, addToast])
 
   const handleSaveCurrent = useCallback(async () => {
     await editorRef.current?.saveFile()
@@ -189,9 +187,9 @@ function App() {
         case 'exit': await handleExit(); break
         case 'undo': editor.undo(); break
         case 'redo': editor.redo(); break
-        case 'cut': editor.focus(); document.execCommand('cut'); break
-        case 'copy': document.execCommand('copy'); break
-        case 'paste': editor.focus(); document.execCommand('paste'); break
+        case 'cut': editor.focus(); try { document.execCommand('cut') } catch {}; break
+        case 'copy': try { const t = editor.getText(); if (t) navigator.clipboard.writeText(t) } catch {}; break
+        case 'paste': editor.focus(); break
         case 'export-html': await handleExportHtml(); break
         case 'export-pdf': await handleExportPdf(); break
         case 'export-markdown': await handleExportMarkdown(); break
@@ -200,7 +198,7 @@ function App() {
       }
     })
     return () => cleanup?.()
-  }, [handleExit, handleExportHtml, handleExportPdf, handleExportMarkdown, handleImportMarkdown, handleBatchImportMarkdown, handleRefreshFolder])
+  }, [handleExit, handleExportHtml, handleExportPdf, handleExportMarkdown, handleImportMarkdown, handleBatchImportMarkdown, handleRefreshFolder, setShowWelcome])
 
   useEffect(() => {
     const cleanup = window.electronAPI?.onBeforeClose(beforeClose)
@@ -211,28 +209,28 @@ function App() {
     setShowWelcome(false)
     setHasContent(true)
     setTimeout(() => editorRef.current?.newFile(), 0)
-  }, [])
+  }, [setShowWelcome])
 
   const handleSave = useCallback(async () => {
     setShowWelcome(false)
     await editorRef.current?.saveFile()
-  }, [])
+  }, [setShowWelcome])
 
   const handleContentChange = useCallback((content: string) => {
-    if (showWelcome && content) {
+    if (ui.showWelcome && content) {
       setShowWelcome(false)
       setHasContent(true)
     }
-  }, [showWelcome])
+  }, [ui.showWelcome, setShowWelcome])
 
   const handleImageSubmit = useCallback(() => {
-    const url = imageUrlInput.trim()
+    const url = ui.imageUrlInput.trim()
     if (!url) return
     editorRef.current?.formatInline('image', url)
     editorRef.current?.focus()
     setShowImageInput(false)
     setImageUrlInput('')
-  }, [imageUrlInput])
+  }, [ui.imageUrlInput, setShowImageInput, setImageUrlInput])
 
   const handleFormat = useCallback((type: InlineFormatType, url?: string) => {
     const editor = editorRef.current
@@ -244,14 +242,14 @@ function App() {
       return
     }
     editor.formatInline(type, url)
-  }, [])
+  }, [setImageUrlInput, setShowImageInput])
 
   const handleBlock = useCallback((type: BlockFormatType) => {
     const editor = editorRef.current
     if (!editor) return
     if (type === 'math') { setShowFormulaDialog(true); return }
     editor.insertBlock(type)
-  }, [])
+  }, [setShowFormulaDialog])
 
   const handleFormulaInsert = useCallback((expression: string, displayMode: boolean) => {
     editorRef.current?.insertText({
@@ -259,14 +257,14 @@ function App() {
       attrs: { tex: expression },
     })
     setShowFormulaDialog(false)
-  }, [])
+  }, [setShowFormulaDialog])
 
   const handleChartInsert = useCallback((content: string) => {
     editorRef.current?.insertText({
       type: 'mermaidDiagram', attrs: { code: content },
     })
     setShowChartDialog(false)
-  }, [])
+  }, [setShowChartDialog])
 
   const handleOpenFile = useCallback(async (filePath: string) => {
     const editor = editorRef.current
@@ -284,34 +282,34 @@ function App() {
       editor.resetModified()
       editor.focus()
     }
-  }, [confirmUnsaved])
+  }, [confirmUnsaved, setShowWelcome])
 
   const handleHome = useCallback(async () => {
     if (!(await confirmUnsaved())) return
     setShowWelcome(true)
     setHasContent(false)
-    setWelcomeKey(k => k + 1)
+    incrementWelcomeKey()
     editorRef.current?.clear()
-  }, [confirmUnsaved])
+  }, [confirmUnsaved, setShowWelcome, incrementWelcomeKey])
 
   const handleSidebarMouseEnter = useCallback(async () => {
     if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current)
-    if (!sidebarVisible && linkedFolderPath) await handleRefreshFolder()
+    if (!ui.sidebarVisible && linkedFolderPath) await handleRefreshFolder()
     setSidebarVisible(true)
-  }, [sidebarVisible, linkedFolderPath, handleRefreshFolder])
+  }, [ui.sidebarVisible, linkedFolderPath, handleRefreshFolder, setSidebarVisible])
 
   const handleSidebarMouseLeave = useCallback(() => {
-    if (sidebarPinned) return
+    if (ui.sidebarPinned) return
     sidebarTimerRef.current = setTimeout(() => setSidebarVisible(false), 1000)
-  }, [sidebarPinned])
+  }, [ui.sidebarPinned, setSidebarVisible])
 
   const handleToggleSidebar = useCallback(async () => {
     if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current)
-    if (sidebarVisible) { setSidebarVisible(false); setSidebarPinned(false); return }
+    if (ui.sidebarVisible) { setSidebarVisible(false); setSidebarPinned(false); return }
     if (linkedFolderPath) await handleRefreshFolder()
     setSidebarVisible(true)
     setSidebarPinned(true)
-  }, [sidebarVisible, linkedFolderPath, handleRefreshFolder])
+  }, [ui.sidebarVisible, linkedFolderPath, handleRefreshFolder, setSidebarVisible, setSidebarPinned])
 
   return (
     <div className="h-screen w-screen bg-[var(--color-bg)] flex flex-col">
@@ -329,20 +327,20 @@ function App() {
 
       <Toolbar
         theme={theme} onNew={handleNew}
-        onSave={() => { if (!showWelcome) handleSave() }}
+        onSave={() => { if (!ui.showWelcome) handleSave() }}
         onToggleTheme={cycleTheme} onSettings={() => setShowSettings(true)}
         onHome={handleHome} onToggleSidebar={handleToggleSidebar}
-        onFormat={(type, url) => { if (!showWelcome) handleFormat(type, url) }}
-        onBlock={(type) => { if (!showWelcome) handleBlock(type) }}
-        onUndo={() => { if (!showWelcome) editorRef.current?.undo() }}
-        onRedo={() => { if (!showWelcome) editorRef.current?.redo() }}
-        onExportHtml={() => { if (!showWelcome) handleExportHtml() }}
-        onExportPdf={() => { if (!showWelcome) handleExportPdf() }}
-        onExportMarkdown={() => { if (!showWelcome) handleExportMarkdown() }}
+        onFormat={(type, url) => { if (!ui.showWelcome) handleFormat(type, url) }}
+        onBlock={(type) => { if (!ui.showWelcome) handleBlock(type) }}
+        onUndo={() => { if (!ui.showWelcome) editorRef.current?.undo() }}
+        onRedo={() => { if (!ui.showWelcome) editorRef.current?.redo() }}
+        onExportHtml={() => { if (!ui.showWelcome) handleExportHtml() }}
+        onExportPdf={() => { if (!ui.showWelcome) handleExportPdf() }}
+        onExportMarkdown={() => { if (!ui.showWelcome) handleExportMarkdown() }}
         onImportMarkdown={() => handleImportMarkdown()}
         onBatchImportMarkdown={() => handleBatchImportMarkdown()}
-        onToggleAiChat={() => setAiChatOpen(v => !v)}
-        onInsertChart={() => { if (!showWelcome) setShowChartDialog(true) }}
+        onToggleAiChat={() => toggleAiChat()}
+        onInsertChart={() => { if (!ui.showWelcome) setShowChartDialog(true) }}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -350,45 +348,45 @@ function App() {
           <Sidebar onNew={handleNew} onOpenFile={handleOpenFile}
             folderPath={folderPath} folderEntries={folderEntries}
             onLinkFolder={handleLinkFolder} onUnlinkFolder={handleUnlinkFolder}
-            linkedFolderPath={linkedFolderPath} isVisible={sidebarVisible}
+            linkedFolderPath={linkedFolderPath} isVisible={ui.sidebarVisible}
             onMouseEnter={handleSidebarMouseEnter} onMouseLeave={handleSidebarMouseLeave}
             onRefreshFolder={handleRefreshFolder} onClose={() => setSidebarVisible(false)} />
 
-          {showWelcome && (
-            <WelcomePage key={welcomeKey} onNew={handleNew} onOpenFile={handleOpenFile}
+          {ui.showWelcome && (
+            <WelcomePage key={ui.welcomeKey} onNew={handleNew} onOpenFile={handleOpenFile}
               onLinkFolder={handleLinkFolder} linkedFolderPath={linkedFolderPath}
               folderEntries={folderEntries} onRefreshFolder={handleRefreshFolder} />
           )}
 
-          <div className={`h-full transition-opacity duration-150 ${showWelcome ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <div className={`h-full transition-opacity duration-150 ${ui.showWelcome ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
             <Editor ref={editorRef} darkMode={darkMode}
-              settings={{ ...settings, editorWidth: editorWide ? 1000 : settings.editorWidth }}
-              linkedFolderPath={linkedFolderPath} focusMode={focusMode}
+              settings={{ ...settings, editorWidth: ui.editorWide ? 1000 : settings.editorWidth }}
+              linkedFolderPath={linkedFolderPath} focusMode={ui.focusMode}
               onModifiedChange={setIsModified} onContentChange={handleContentChange}
               onWordCountChange={setWordCount} onLineCountChange={setLineCount}
               onShowSaveDialog={showSaveDialog} onShowOpenDialog={showOpenDialog}
               onSaved={handleRefreshFolder}
               onDocChange={(fp) => setDocKey(fp || 'untitled')}
-              aiEditMode={aiChatOpen && selectedText.length > 0}
+              aiEditMode={ui.aiChatOpen && ui.selectedText.length > 0}
               onSelectionChange={setSelectedText} />
           </div>
-          {aiChatOpen && <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/5 to-transparent pointer-events-none z-10" />}
+          {ui.aiChatOpen && <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/5 to-transparent pointer-events-none z-10" />}
         </div>
 
         <div className={`absolute right-0 top-0 bottom-0 w-[420px] z-20 bg-[var(--color-bg)] shadow-xl transition-all duration-500 ease-out ${
-          aiChatOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+          ui.aiChatOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
         }`}
           style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}>
-          <AiChatPanel onClose={() => setAiChatOpen(false)}
+          <AiChatPanel onClose={() => toggleAiChat()}
             getDocumentContent={() => editorRef.current?.exportMarkdown?.() ?? editorRef.current?.getText?.() ?? ''}
-            selectedText={selectedText}
+            selectedText={ui.selectedText}
             replaceSelection={(text) => editorRef.current?.replaceSelection?.(text)}
-            settings={settings} docKey={showWelcome ? '__welcome__' : docKey}
+            settings={settings} docKey={ui.showWelcome ? '__welcome__' : ui.docKey}
             insertText={(text) => editorRef.current?.insertText(text)} />
         </div>
       </div>
 
-      {showImageInput && (
+      {ui.showImageInput && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 bg-black/10 dialog-overlay">
           <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl p-4 border border-[var(--color-border)] min-w-[360px] dialog-panel">
             <div className="flex items-center justify-between mb-3">
@@ -398,7 +396,7 @@ function App() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
-            <input autoFocus type="text" value={imageUrlInput} onChange={e => setImageUrlInput(e.target.value)}
+            <input autoFocus type="text" value={ui.imageUrlInput} onChange={e => setImageUrlInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleImageSubmit(); if (e.key === 'Escape') { setShowImageInput(false); setImageUrlInput('') } }}
               placeholder="https://..."
               className="w-full h-9 px-3 text-sm bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] transition-colors" />
@@ -412,22 +410,23 @@ function App() {
         </div>
       )}
 
-      {showFormulaDialog && (
+      {ui.showFormulaDialog && (
         <FormulaDialog onInsert={handleFormulaInsert} onClose={() => setShowFormulaDialog(false)} />
       )}
-      {showChartDialog && (
+      {ui.showChartDialog && (
         <ChartDialog onInsert={handleChartInsert} onClose={() => setShowChartDialog(false)} />
       )}
 
-      {showSettings && (
+      {ui.showSettings && (
         <SettingsPanel settings={settings} onChange={handleSettingsChange} onClose={() => setShowSettings(false)} />
       )}
 
       <Dialogs dialogState={dialogState} onSaveCurrent={handleSaveCurrent} onClose={closeDialog} />
 
       <StatusBar wordCount={wordCount} lineCount={lineCount} isModified={isModified} hasContent={hasContent}
-        focusMode={focusMode} onToggleFocusMode={() => setFocusMode(v => !v)}
-        editorWide={editorWide} onToggleEditorWidth={() => setEditorWide(v => !v)} />
+        focusMode={ui.focusMode} onToggleFocusMode={() => toggleFocusMode()}
+        editorWide={ui.editorWide} onToggleEditorWidth={() => toggleEditorWide()} />
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

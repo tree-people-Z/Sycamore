@@ -8,6 +8,28 @@ const isDev = !!process.env.VITE_DEV_SERVER_URL
 let mainWindow: BrowserWindow | null = null
 let closeInProgress = false
 
+const ALLOWED_BASE_DIRS = new Set<string>()
+
+function addAllowedDir(dirPath: string) {
+  try {
+    const resolved = path.resolve(dirPath)
+    ALLOWED_BASE_DIRS.add(resolved)
+  } catch {}
+}
+
+function isPathSafe(targetPath: string): string | null {
+  try {
+    const resolved = path.resolve(targetPath)
+    if (resolved.includes('\0')) return null
+    for (const base of ALLOWED_BASE_DIRS) {
+      if (resolved.startsWith(base + path.sep) || resolved === base) return resolved
+    }
+    return resolved
+  } catch {
+    return null
+  }
+}
+
 const gotTheLock = app.requestSingleInstanceLock()
 
 if (!gotTheLock) {
@@ -56,6 +78,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   })
 
@@ -84,9 +107,10 @@ function createWindow() {
     mainWindow?.webContents.send('maximize-change', false)
   })
 
-  if (isDev) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL!)
-  } else {
+  if (isDev && mainWindow) {
+    const devUrl = process.env.VITE_DEV_SERVER_URL
+    if (devUrl) mainWindow.loadURL(devUrl)
+  } else if (mainWindow) {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 }
@@ -234,16 +258,28 @@ async function readDirEntries(dirPath: string): Promise<DirEntry[]> {
   } catch { return [] }
 }
 
-function extractText(node: any): string {
+interface ProseMirrorNode {
+  text?: string
+  content?: ProseMirrorNode[]
+  [key: string]: unknown
+}
+
+function extractText(node: ProseMirrorNode | string): string {
   if (typeof node === 'string') return node
-  if (node?.text) return node.text
-  if (node?.content?.length) return node.content.map((n: any) => extractText(n)).join(' ')
+  if (node.text) return node.text
+  if (node.content?.length) return node.content.map(n => extractText(n)).join(' ')
   return ''
 }
 
-ipcMain.handle('readDirectory', async (_event, dirPath: string) => readDirEntries(dirPath))
+ipcMain.handle('readDirectory', async (_event, dirPath: string) => {
+  const safePath = isPathSafe(dirPath)
+  if (!safePath) return []
+  return readDirEntries(safePath)
+})
 
 ipcMain.handle('readDirectoryRecursive', async (_event, dirPath: string) => {
+  const safePath = isPathSafe(dirPath)
+  if (!safePath) return []
   const result: Array<{ name: string; path: string; isDirectory: boolean; preview?: string }> = []
   async function walk(dir: string) {
     const entries = await readDirEntries(dir)
@@ -256,27 +292,38 @@ ipcMain.handle('readDirectoryRecursive', async (_event, dirPath: string) => {
       } catch {}
     }
   }
-  await walk(dirPath)
+  await walk(safePath)
   return result
 })
 
-ipcMain.handle('readFile', async (_event, filePath: string) => fs.readFile(filePath, 'utf-8'))
+ipcMain.handle('readFile', async (_event, filePath: string) => {
+  const safePath = isPathSafe(filePath)
+  if (!safePath) throw new Error('Access denied')
+  return fs.readFile(safePath, 'utf-8')
+})
 
 ipcMain.handle('writeFile', async (_event, { filePath, content }: { filePath: string; content: string }) => {
-  await fs.writeFile(filePath, content, 'utf-8')
+  const safePath = isPathSafe(filePath)
+  if (!safePath) throw new Error('Access denied')
+  await fs.writeFile(safePath, content, 'utf-8')
+  addAllowedDir(path.dirname(safePath))
 })
 
 ipcMain.handle('deleteEntry', async (_event, entryPath: string) => {
   try {
-    const parentDir = path.dirname(entryPath)
+    const safePath = isPathSafe(entryPath)
+    if (!safePath) return false
+    const parentDir = path.dirname(safePath)
     const trashDir = path.join(parentDir, '.trash')
     await fs.mkdir(trashDir, { recursive: true })
-    await fs.rename(entryPath, path.join(trashDir, `${Date.now()}-${path.basename(entryPath)}`))
+    await fs.rename(safePath, path.join(trashDir, `${Date.now()}-${path.basename(safePath)}`))
     return true
   } catch { return false }
 })
 
 ipcMain.handle('countDirectoryContents', async (_event, dirPath: string) => {
+  const safePath = isPathSafe(dirPath)
+  if (!safePath) return 0
   try {
     let count = 0
     async function walk(dir: string) {
@@ -287,14 +334,16 @@ ipcMain.handle('countDirectoryContents', async (_event, dirPath: string) => {
         else { count++ }
       }
     }
-    await walk(dirPath)
+    await walk(safePath)
     return count
   } catch { return 0 }
 })
 
 ipcMain.handle('listTrashItems', async (_event, parentPath: string) => {
+  const safePath = isPathSafe(parentPath)
+  if (!safePath) return []
   try {
-    const trashDir = path.join(parentPath, '.trash')
+    const trashDir = path.join(safePath, '.trash')
     const dirents = await fs.readdir(trashDir, { withFileTypes: true })
     return dirents.map(e => ({
       name: e.name.replace(/^\d+-/, ''),
@@ -306,59 +355,80 @@ ipcMain.handle('listTrashItems', async (_event, parentPath: string) => {
 
 ipcMain.handle('restoreFromTrash', async (_event, { trashPath, originalPath }: { trashPath: string; originalPath: string }) => {
   try {
-    const ext = path.extname(originalPath)
-    const base = path.basename(originalPath, ext)
-    const parentDir = path.dirname(originalPath)
-    let restorePath = originalPath
+    const safeTrash = isPathSafe(trashPath)
+    const safeOrig = isPathSafe(originalPath)
+    if (!safeTrash || !safeOrig) return null
+    const ext = path.extname(safeOrig)
+    const base = path.basename(safeOrig, ext)
+    const parentDir = path.dirname(safeOrig)
+    let restorePath = safeOrig
     let counter = 1
     while (await fs.access(restorePath).then(() => true).catch(() => false)) {
       restorePath = path.join(parentDir, `${base}(restored${counter})${ext}`)
       counter++
     }
-    await fs.rename(trashPath, restorePath)
+    await fs.rename(safeTrash, restorePath)
     return restorePath
   } catch { return null }
 })
 
 ipcMain.handle('permanentDelete', async (_event, entryPath: string) => {
+  const safePath = isPathSafe(entryPath)
+  if (!safePath) return false
   try {
-    const stat = await fs.stat(entryPath)
-    if (stat.isDirectory()) await fs.rm(entryPath, { recursive: true, force: true })
-    else await fs.unlink(entryPath)
+    const stat = await fs.stat(safePath)
+    if (stat.isDirectory()) await fs.rm(safePath, { recursive: true, force: true })
+    else await fs.unlink(safePath)
     return true
   } catch { return false }
 })
 
 ipcMain.handle('renameEntry', async (_event, { oldPath, newPath }: { oldPath: string; newPath: string }) => {
+  const safeOld = isPathSafe(oldPath)
+  const safeNew = isPathSafe(newPath)
+  if (!safeOld || !safeNew) return false
   try {
-    await fs.rename(oldPath, newPath)
+    await fs.rename(safeOld, safeNew)
     return true
   } catch { return false }
 })
 
 ipcMain.handle('openInExplorer', async (_event, targetPath: string) => {
+  const safePath = isPathSafe(targetPath)
+  if (!safePath) return false
   try {
-    const stat = await fs.stat(targetPath)
+    const stat = await fs.stat(safePath)
     if (stat.isDirectory()) {
-      await shell.openPath(targetPath)
+      await shell.openPath(safePath)
     } else {
-      shell.showItemInFolder(targetPath)
+      shell.showItemInFolder(safePath)
     }
     return true
   } catch { return false }
 })
 
 ipcMain.handle('makeDirectory', async (_event, dirPath: string) => {
-  await fs.mkdir(dirPath, { recursive: true })
+  const safePath = isPathSafe(dirPath)
+  if (!safePath) throw new Error('Access denied')
+  await fs.mkdir(safePath, { recursive: true })
+  addAllowedDir(safePath)
 })
 
 ipcMain.handle('fileExists', async (_event, filePath: string) => {
-  try { await fs.access(filePath); return true }
+  const safePath = isPathSafe(filePath)
+  if (!safePath) return false
+  try { await fs.access(safePath); return true }
   catch { return false }
 })
 
+ipcMain.handle('buildExportHtml', async (_event, { bodyHtml, darkMode }: { bodyHtml: string; darkMode: boolean }) => {
+  return buildExportHtml(bodyHtml, darkMode)
+})
+
 ipcMain.handle('getDefaultSaveDir', async () => {
-  return path.join(app.getPath('documents'), 'Sycamore笔记')
+  const dir = path.join(app.getPath('documents'), 'Sycamore笔记')
+  addAllowedDir(dir)
+  return dir
 })
 
 ipcMain.handle('exportPdfToPath', async (_event, { filePath, html, darkMode }: { filePath: string; html: string; darkMode: boolean }) => {
@@ -366,9 +436,10 @@ ipcMain.handle('exportPdfToPath', async (_event, { filePath, html, darkMode }: {
   await fs.writeFile(tempFile, buildExportHtml(html, darkMode), 'utf-8')
   const pdfWindow = new BrowserWindow({
     width: 800, height: 600, show: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
   try {
+    if (!pdfWindow) throw new Error('Failed to create PDF window')
     await pdfWindow.loadFile(tempFile)
     const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, preferCSSPageSize: true })
     await fs.writeFile(filePath, pdf)
@@ -405,9 +476,15 @@ ipcMain.handle('showOpenFileDialog', async (_event, { startingPath }: { starting
     filters: [{ name: 'Sycamore Files', extensions: ['json', 'md'] }],
     properties: ['openFile'],
   }
-  if (startingPath) opts.defaultPath = startingPath
-  const result = await dialog.showOpenDialog(mainWindow!, opts)
-  return result.canceled ? null : result.filePaths[0]
+  if (startingPath) {
+    const safeStart = isPathSafe(startingPath)
+    if (safeStart) opts.defaultPath = safeStart
+  }
+  if (!mainWindow) return null
+  const result = await dialog.showOpenDialog(mainWindow, opts)
+  const fp = result.canceled ? null : result.filePaths[0]
+  if (fp) addAllowedDir(path.dirname(fp))
+  return fp
 })
 
 ipcMain.handle('showSaveFileDialog', async (_event, { defaultName, startingPath }: { defaultName?: string; startingPath?: string }) => {
@@ -415,19 +492,26 @@ ipcMain.handle('showSaveFileDialog', async (_event, { defaultName, startingPath 
     title: '保存文件',
     filters: [{ name: 'Sycamore Files', extensions: ['json', 'md', 'html', 'pdf'] }],
   }
-  if (defaultName) {
-    opts.defaultPath = (startingPath ? startingPath + '\\' : '') + defaultName
-  } else if (startingPath) {
-    opts.defaultPath = startingPath
+  const safeStart = startingPath ? isPathSafe(startingPath) : null
+  if (defaultName && safeStart) {
+    opts.defaultPath = safeStart + path.sep + defaultName
+  } else if (safeStart) {
+    opts.defaultPath = safeStart
   }
-  const result = await dialog.showSaveDialog(mainWindow!, opts)
-  return result.canceled ? null : result.filePath
+  if (!mainWindow) return null
+  const result = await dialog.showSaveDialog(mainWindow, opts)
+  const fp = result.canceled ? null : result.filePath
+  if (fp) addAllowedDir(path.dirname(fp))
+  return fp
 })
 
 ipcMain.handle('showFolderPickerDialog', async () => {
-  const result = await dialog.showOpenDialog(mainWindow!, {
+  if (!mainWindow) return null
+  const result = await dialog.showOpenDialog(mainWindow, {
     title: '选择文件夹',
     properties: ['openDirectory'],
   })
-  return result.canceled ? null : result.filePaths[0]
+  const fp = result.canceled ? null : result.filePaths[0]
+  if (fp) addAllowedDir(fp)
+  return fp
 })

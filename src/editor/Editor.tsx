@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useCallback, useEffect, useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react'
 import { EditHighlightPlugin } from './extensions/edit-highlight'
 import StarterKit from '@tiptap/starter-kit'
@@ -27,6 +27,7 @@ import { SlashMenu } from './extensions/slash-menu'
 import type { SlashMenuItem } from './extensions/slash-menu'
 import { CustomImage } from './extensions/image-extension'
 import SelectionToolbar from '../components/SelectionToolbar'
+import ErrorBoundary from '../components/ErrorBoundary'
 import { emit } from '../utils/emitter'
 import type { EditorSettings } from '../constants'
 
@@ -90,7 +91,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   const filePathRef = useRef<string | null>(null)
   const titleRef = useRef('')
   const prevFocusNodeRef = useRef<HTMLElement | null>(null)
-  const lowlight = createLowlight(common)
+  const lowlight = useMemo(() => createLowlight(common), [])
   const [title, setTitle] = useState('')
   const [selectionToolbarPos, setSelectionToolbarPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -145,15 +146,32 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     }
   }, [focusMode])
 
-  const mathBlockWithView = MathBlock.extend({
+  const mathBlockWithView = useMemo(() => MathBlock.extend({
     addNodeView() { return ReactNodeViewRenderer(MathBlockView) },
-  })
+  }), [])
 
-  const mathInlineWithView = MathInline.extend({
+  const mathInlineWithView = useMemo(() => MathInline.extend({
     addNodeView() { return ReactNodeViewRenderer(MathInlineView) },
-  })
+  }), [])
 
-  const mermaidWithView = MermaidDiagram
+  const slashItems = useMemo(() => ([
+    { title: '标题 1', description: '大标题', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
+    { title: '标题 2', description: '中标题', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
+    { title: '标题 3', description: '小标题', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
+    { title: '引用', description: '引用文本', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleBlockquote().run() },
+    { title: '无序列表', description: '项目列表', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleBulletList().run() },
+    { title: '有序列表', description: '编号列表', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleOrderedList().run() },
+    { title: '任务列表', description: '待办事项', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleTaskList().run() },
+    { title: '代码块', description: '代码片段', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleCodeBlock().run() },
+    { title: '分割线', description: '水平分割线', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).setHorizontalRule().run() },
+    { title: '表格', description: '插入表格', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3 }).run() },
+    { title: '数学公式', description: '行内公式', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mathInline', attrs: { tex: '\\frac{a}{b}' } }).run() },
+    { title: '图表', description: 'Mermaid 图表', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mermaidDiagram', attrs: { code: 'graph TD\n  A[开始] --> B[结束]' } }).run() },
+    { title: '图片', description: '插入图片', command: ({ editor: ed, range }: any) => {
+      const url = prompt('输入图片 URL:')
+      if (url) ed.chain().focus().deleteRange(range).setImage({ src: url }).run()
+    }},
+  ] as SlashMenuItem[]).map(item => ({ ...item, icon: '' })), [])
 
   const editor = useEditor({
     extensions: [
@@ -167,29 +185,10 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       TextStyle, Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       CodeBlockLowlight.configure({ lowlight }),
-      mathInlineWithView, mathBlockWithView, mermaidWithView, CustomImage,
+      mathInlineWithView, mathBlockWithView, MermaidDiagram, CustomImage,
       WikiLink.configure({}),
       TaskList, TaskItem.configure({ nested: true }),
-      SlashMenu.configure({
-        items: ([
-          { title: '标题 1', description: '大标题', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
-          { title: '标题 2', description: '中标题', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
-          { title: '标题 3', description: '小标题', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
-          { title: '引用', description: '引用文本', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleBlockquote().run() },
-          { title: '无序列表', description: '项目列表', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleBulletList().run() },
-          { title: '有序列表', description: '编号列表', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleOrderedList().run() },
-          { title: '任务列表', description: '待办事项', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleTaskList().run() },
-          { title: '代码块', description: '代码片段', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).toggleCodeBlock().run() },
-          { title: '分割线', description: '水平分割线', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).setHorizontalRule().run() },
-          { title: '表格', description: '插入表格', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3 }).run() },
-          { title: '数学公式', description: '行内公式', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mathInline', attrs: { tex: '\\frac{a}{b}' } }).run() },
-          { title: '图表', description: 'Mermaid 图表', command: ({ editor: ed, range }) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mermaidDiagram', attrs: { code: 'graph TD\n  A[开始] --> B[结束]' } }).run() },
-          { title: '图片', description: '插入图片', command: ({ editor: ed, range }) => {
-            const url = prompt('输入图片 URL:')
-            if (url) ed.chain().focus().deleteRange(range).setImage({ src: url }).run()
-          }},
-        ] as SlashMenuItem[]).map(item => ({ ...item, icon: '' })),
-      }),
+      SlashMenu.configure({ items: slashItems }),
       EditHighlightPlugin,
     ],
     editorProps: {
@@ -216,7 +215,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           return true
         }
         for (const file of Array.from(files)) {
-          const fp = (file as any).path
+          const fp = (file as File & { path?: string }).path
           if (!fp || !/\.(json|md)$/i.test(fp)) continue
           event.preventDefault()
           ;(async () => {
@@ -278,7 +277,8 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       document.querySelectorAll('.focus-active').forEach(el => el.classList.remove('focus-active'))
       prevFocusNodeRef.current = null
     }
-  }, [focusMode, editor]) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusMode, editor, updateFocusNode])
 
   useEffect(() => {
     if (!editor) return
@@ -314,7 +314,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       }
     }
     if (!fp) return
-    try { await window.electronAPI?.writeFile(fp, content) } catch { window.alert('保存失败，请检查磁盘空间和权限'); return }
+      try { await window.electronAPI?.writeFile(fp, content) } catch (e) { console.error('Save failed:', e); return }
     filePathRef.current = fp
     const savedTitle = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
     setTitle(savedTitle)
@@ -437,7 +437,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       const fp = await onShowSaveDialog(`${sanitizeFileName(titleRef.current)}.json`)
       if (!fp) return
       const content = JSON.stringify(editor.getJSON(), null, 2)
-      try { await window.electronAPI?.writeFile(fp, content) } catch { window.alert('保存失败，请检查磁盘空间和权限'); return }
+    try { await window.electronAPI?.writeFile(fp, content) } catch (e) { console.error('Save failed:', e); return }
       filePathRef.current = fp
       const savedTitle = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
       setTitle(savedTitle); titleRef.current = savedTitle
@@ -545,7 +545,9 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         />
 
       </div>
-      <EditorContent editor={editor} className={`editor-content${focusMode ? ' focus-mode' : ''}`} />
+      <ErrorBoundary>
+        <EditorContent editor={editor} className={`editor-content${focusMode ? ' focus-mode' : ''}`} />
+      </ErrorBoundary>
       {selectionToolbarPos && editor && (
         <SelectionToolbar
           top={selectionToolbarPos.top}

@@ -1,3 +1,5 @@
+declare const __KATEX_CSS__: string
+
 export function buildExportHtml(bodyHtml: string, darkMode: boolean): string {
   const bg = darkMode ? '#1c1c1e' : '#ffffff'
   const fg = darkMode ? '#f5f5f7' : '#1d1d1f'
@@ -10,7 +12,7 @@ export function buildExportHtml(bodyHtml: string, darkMode: boolean): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Exported</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<style>${__KATEX_CSS__}</style>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,'Segoe UI','Inter','SF Pro Text',Roboto,Helvetica,Arial,sans-serif;background:${bg};color:${fg};line-height:1.8;padding:48px 64px;max-width:800px;margin:0 auto;font-size:16px;-webkit-font-smoothing:antialiased}

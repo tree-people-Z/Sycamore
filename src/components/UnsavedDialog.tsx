@@ -1,4 +1,6 @@
+import { memo } from 'react'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface UnsavedDialogProps {
   onSave: () => void
@@ -7,9 +9,10 @@ interface UnsavedDialogProps {
 }
 
 function UnsavedDialog({ onSave, onDiscard, onCancel }: UnsavedDialogProps) {
+  const panelRef = useFocusTrap(true)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dialog-overlay">
-      <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[340px] dialog-panel">
+      <div ref={panelRef} className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[340px] dialog-panel">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">未保存的更改</h2>
           <button onClick={onCancel}
@@ -41,4 +44,4 @@ function UnsavedDialog({ onSave, onDiscard, onCancel }: UnsavedDialogProps) {
   )
 }
 
-export default UnsavedDialog
+export default memo(UnsavedDialog)

@@ -7,7 +7,7 @@ import { Code, Check } from 'lucide-react'
 mermaid.initialize({
   startOnLoad: false,
   theme: 'default',
-  securityLevel: 'loose',
+  securityLevel: 'strict',
   fontFamily: 'inherit',
 })
 
@@ -52,8 +52,9 @@ function MermaidDiagramView({ node, updateAttributes }: NodeViewProps) {
       const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       const { svg: renderedSvg } = await mermaid.render(id, code)
       setSvg(renderedSvg)
-    } catch (err: any) {
-      setError(err.str || err.message || '渲染失败')
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' ? (err as Record<string, unknown>).str || (err as Error).message : String(err)
+      setError((msg as string) || '渲染失败')
       setSvg('')
     }
   }, [code])

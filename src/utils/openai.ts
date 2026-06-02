@@ -46,7 +46,7 @@ export async function chatCompletionStream(
             full += content
             onToken(content)
           }
-        } catch {}
+        } catch (e) { console.warn('SSE parse error:', e) }
       }
     }
   }

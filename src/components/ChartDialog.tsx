@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import { X } from 'lucide-react'
 import mermaid from 'mermaid'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface ChartDialogProps {
   onInsert: (content: string) => void
@@ -22,10 +23,11 @@ function ChartDialog({ onInsert, onClose }: ChartDialogProps) {
   const [code, setCode] = useState(DIAGRAM_TYPES[0].content)
   const [error, setError] = useState('')
   const previewRef = useRef<HTMLDivElement>(null)
+  const panelRef = useFocusTrap(true)
   const id = useMemo(() => `chart-${Date.now()}`, [])
 
   useEffect(() => {
-    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' })
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict' })
   }, [])
 
   useEffect(() => {
@@ -49,7 +51,7 @@ function ChartDialog({ onInsert, onClose }: ChartDialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 bg-black/20 dialog-overlay" onClick={onClose}>
-      <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[600px] max-h-[85vh] flex flex-col dialog-panel" onClick={e => e.stopPropagation()}>
+      <div ref={panelRef} className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[600px] max-h-[85vh] flex flex-col dialog-panel" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] flex-shrink-0">
           <span className="text-sm font-medium text-[var(--color-text)]">插入图表</span>
           <button onClick={onClose}
@@ -110,4 +112,4 @@ function ChartDialog({ onInsert, onClose }: ChartDialogProps) {
   )
 }
 
-export default ChartDialog
+export default memo(ChartDialog)

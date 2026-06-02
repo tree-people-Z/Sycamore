@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, memo } from 'react'
 import { X, Send, Bot, User, FileDown, Check, Plus, Square, RefreshCw, Sparkles, Trash2, ChevronDown } from 'lucide-react'
 import { chatCompletionStream } from '../utils/openai'
 import { marked } from 'marked'
@@ -435,4 +435,4 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
   )
 }
 
-export default AiChatPanel
+export default memo(AiChatPanel)

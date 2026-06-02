@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, memo } from 'react'
 import {
   Bold, Italic, Strikethrough, Underline, Highlighter, Code, Link2,
-  Check, Palette, Sparkles,
+  Check, Sparkles,
 } from 'lucide-react'
-import { COLORS } from '../constants'
+import ColorPicker from './ColorPicker'
 
 interface SelectionToolbarProps {
   top: number
@@ -25,17 +25,8 @@ function SelectionToolbar({
   onHighlight, onColor, onCode, onLink, onClose, onAi,
 }: SelectionToolbarProps) {
   const [showLinkInput, setShowLinkInput] = useState(false)
-  const [showColorPicker, setShowColorPicker] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const colorRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handle = (e: MouseEvent) => {
-      if (colorRef.current && !colorRef.current.contains(e.target as Node)) setShowColorPicker(false)
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
 
   const handleLinkSubmit = () => {
     if (linkUrl.trim()) onLink(linkUrl.trim())
@@ -51,31 +42,17 @@ function SelectionToolbar({
       style={{ top: `${top}px`, left: `${left}px` }}
     >
       {onAi && (
-          <button onClick={() => { onAi(); onClose() }} className={`${btn} ai-btn`} title="AI 提问、润色、翻译、续写…">
+          <button onClick={() => { onAi(); onClose() }} className={`${btn} ai-btn`} title="AI 提问、润色、翻译、续写…" aria-label="AI 助手">
           <Sparkles size={14} className="text-[var(--color-accent)]" />
         </button>
       )}
-      <button onClick={() => { onBold(); onClose() }} className={btn} title="加粗"><Bold size={14} /></button>
-      <button onClick={() => { onItalic(); onClose() }} className={btn} title="斜体"><Italic size={14} /></button>
-      <button onClick={() => { onStrikethrough(); onClose() }} className={btn} title="删除线"><Strikethrough size={14} /></button>
-      <button onClick={() => { onUnderline(); onClose() }} className={btn} title="下划线"><Underline size={14} /></button>
+      <button onClick={() => { onBold(); onClose() }} className={btn} title="加粗" aria-label="加粗"><Bold size={14} /></button>
+      <button onClick={() => { onItalic(); onClose() }} className={btn} title="斜体" aria-label="斜体"><Italic size={14} /></button>
+      <button onClick={() => { onStrikethrough(); onClose() }} className={btn} title="删除线" aria-label="删除线"><Strikethrough size={14} /></button>
+      <button onClick={() => { onUnderline(); onClose() }} className={btn} title="下划线" aria-label="下划线"><Underline size={14} /></button>
 
       <div className="relative" ref={colorRef}>
-        <button onClick={() => setShowColorPicker(v => !v)} className={btn} title="文字颜色"><Palette size={14} /></button>
-        {showColorPicker && (
-          <div className="absolute bottom-full left-0 mb-1 bg-[var(--color-surface)] rounded-lg shadow-xl border border-[var(--color-border)] p-2 z-50" style={{ width: '144px' }}>
-            <div className="flex flex-wrap gap-1">
-              {COLORS.map(c => (
-                <button
-                  key={c}
-                  onClick={() => { onColor(c); onClose(); setShowColorPicker(false) }}
-                  className="w-6 h-6 rounded border border-[var(--color-border)] hover:scale-110 transition-transform"
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        <ColorPicker onColor={(c) => { onColor(c); onClose() }} btnClass={btn} />
       </div>
 
       <button onClick={() => { onHighlight(); onClose() }} className={btn} title="高亮"><Highlighter size={14} /></button>
@@ -103,4 +80,4 @@ function SelectionToolbar({
   )
 }
 
-export default SelectionToolbar
+export default memo(SelectionToolbar)

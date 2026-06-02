@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import UnsavedDialog from './UnsavedDialog'
 import type { DialogState, UnsavedResult } from '../hooks/useDialogs'
 
@@ -19,4 +20,4 @@ function Dialogs({ dialogState, onSaveCurrent, onClose }: DialogsProps) {
   )
 }
 
-export default Dialogs
+export default memo(Dialogs)

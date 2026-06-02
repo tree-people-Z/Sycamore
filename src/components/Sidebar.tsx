@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, memo } from 'react'
 import {
   FilePlus, FileText, Folder, FolderOpen, Search,
   ChevronRight, Link2, Unlink, RefreshCw,
   List, FolderTree, ChevronLeft, Trash2,
-  Pencil, Copy, ExternalLink,
 } from 'lucide-react'
 import type { FolderEntry } from '../types'
+import ContextMenu from './ContextMenu'
 
 interface SidebarProps {
   onNew: () => void
@@ -184,20 +184,21 @@ function Sidebar({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="搜索..."
+              aria-label="搜索文件"
               className="w-full h-7 pl-7 pr-2 text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] transition-colors"
             />
           </div>
           <button
             onClick={() => setViewMode(v => v === 'tree' ? 'flat' : 'tree')}
             className="w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded-md transition-colors flex-shrink-0"
-            title={viewMode === 'tree' ? '列表视图' : '文件夹视图'}
+            title={viewMode === 'tree' ? '列表视图' : '文件夹视图'} aria-label={viewMode === 'tree' ? '列表视图' : '文件夹视图'}
           >
             {viewMode === 'tree' ? <List size={14} /> : <FolderTree size={14} />}
           </button>
           <button
             onClick={onNew}
             className="w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded-md transition-colors flex-shrink-0"
-            title="新建文档"
+            title="新建文档" aria-label="新建文档"
           >
             <FilePlus size={15} />
           </button>
@@ -205,7 +206,7 @@ function Sidebar({
             <button
               onClick={onRefreshFolder}
               className="w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded-md transition-colors flex-shrink-0"
-              title="刷新"
+              title="刷新" aria-label="刷新"
             >
               <RefreshCw size={13} />
             </button>
@@ -214,7 +215,7 @@ function Sidebar({
             <button
               onClick={onClose}
               className="w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded-md transition-colors flex-shrink-0"
-              title="收起侧栏"
+              title="收起侧栏" aria-label="收起侧栏"
             >
               <ChevronLeft size={15} />
             </button>
@@ -371,7 +372,7 @@ function Sidebar({
               <button
                 onClick={onUnlinkFolder}
                 className="w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded-md transition-colors"
-                title="解除关联"
+                title="解除关联" aria-label="解除关联"
               >
                 <Unlink size={13} />
               </button>
@@ -426,44 +427,19 @@ function Sidebar({
       </div>
 
       {contextMenu && (
-        <div
-          className="fixed z-50 min-w-[150px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl py-1.5"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => handleRename(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
-          >
-            <Pencil size={13} />
-            <span>重命名</span>
-          </button>
-          <button
-            onClick={() => handleOpenFolder(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
-          >
-            <ExternalLink size={13} />
-            <span>打开文件夹</span>
-          </button>
-          <button
-            onClick={() => handleCopyPath(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
-          >
-            <Copy size={13} />
-            <span>复制路径</span>
-          </button>
-          <div className="h-px bg-[var(--color-border)] mx-2 my-1" />
-          <button
-            onClick={() => handleDelete(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-500 hover:bg-red-500/10 transition-colors text-left"
-          >
-            <Trash2 size={13} />
-            <span>删除</span>
-          </button>
-        </div>
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          entry={contextMenu.entry}
+          onClose={() => setContextMenu(null)}
+          onRename={handleRename}
+          onOpenFolder={handleOpenFolder}
+          onCopyPath={handleCopyPath}
+          onDelete={handleDelete}
+        />
       )}
     </>
   )
 }
 
-export default Sidebar
+export default memo(Sidebar)

@@ -1,15 +1,15 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, memo } from 'react'
 import {
   FilePlus, Save, FolderOpen, Moon, Sun, Leaf,
   Bold, Italic, Strikethrough, Underline, Code, Link2,
   Type, Quote, List, ListOrdered,
   Table, Image, Minus, FileCode, Undo2, Redo2,
   Sigma, MoreHorizontal, Settings, Home, BarChart3,
-  Highlighter, FileDown, FileUp, Palette, MessageSquare, CheckSquare,
+  Highlighter, FileDown, FileUp, MessageSquare, CheckSquare,
 } from 'lucide-react'
 import type { InlineFormatType, BlockFormatType } from '../types'
 import { HEADING_ENTRIES } from '../types'
-import { COLORS } from '../constants'
+import ColorPicker from './ColorPicker'
 
 interface ToolbarProps {
   theme: 'light' | 'dark' | 'sycamore'
@@ -30,51 +30,6 @@ interface ToolbarProps {
   onBatchImportMarkdown?: () => void
   onToggleAiChat?: () => void
   onInsertChart?: () => void
-}
-
-function ColorPicker({ onFormat, btn }: { onFormat?: (type: InlineFormatType, url?: string) => void; btn: string }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const handle = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
-  return (
-    <div className="relative inline-flex" ref={ref}>
-      <button onClick={() => setOpen(v => !v)} className={btn} title="文字颜色">
-        <Palette size={14} />
-      </button>
-      {open && (
-          <div className="absolute top-full left-0 mt-0.5 bg-[var(--color-surface)] rounded-lg shadow-xl border border-[var(--color-border)] p-2 z-50" style={{ width: '152px' }}>
-            <div className="flex flex-wrap gap-1">
-              {COLORS.map(c => (
-                <button
-                  key={c}
-                  onClick={() => { onFormat?.('color', c); setOpen(false) }}
-                  className="w-7 h-7 rounded-md border border-[var(--color-border)] hover:scale-110 transition-transform"
-                  style={{ backgroundColor: c }}
-                  title={c}
-                />
-              ))}
-            </div>
-            <input
-              type="text"
-              placeholder="#hex"
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  const val = (e.target as HTMLInputElement).value.trim()
-                  if (val) { onFormat?.('color', val); setOpen(false) }
-                }
-              }}
-              className="w-full mt-1.5 px-2 py-1 text-[10px] font-mono bg-[var(--color-bg)] border border-[var(--color-border)] rounded outline-none text-[var(--color-text)]"
-            />
-          </div>
-      )}
-    </div>
-  )
 }
 
 function Toolbar({
@@ -122,20 +77,20 @@ function Toolbar({
     <div className="h-10 bg-[var(--color-bg)] border-b border-[var(--color-border)] flex items-center px-2.5 gap-0.5 select-none flex-shrink-0 relative">
       {/* Home */}
       {onHome && (
-        <button onClick={onHome} className={btn} title="主页">
+        <button onClick={onHome} className={btn} title="主页" aria-label="主页">
           <Home size={15} />
         </button>
       )}
 
       {/* File operations */}
-      <button onClick={onNew} className={btn} title="新建 (⌘N)"><FilePlus size={15} /></button>
-      <button onClick={onSave} className={btn} title="保存 (⌘S)"><Save size={15} /></button>
+      <button onClick={onNew} className={btn} title="新建 (⌘N)" aria-label="新建"><FilePlus size={15} /></button>
+      <button onClick={onSave} className={btn} title="保存 (⌘S)" aria-label="保存"><Save size={15} /></button>
 
       <div className={separator} />
 
       {/* Sidebar toggle */}
       {onToggleSidebar && (
-        <button onClick={onToggleSidebar} className={btn} title="浏览文件" data-sidebar-toggle="true">
+        <button onClick={onToggleSidebar} className={btn} title="浏览文件" aria-label="浏览文件" data-sidebar-toggle="true">
           <FolderOpen size={15} />
         </button>
       )}
@@ -143,14 +98,14 @@ function Toolbar({
       <div className={separator} />
 
       {/* Undo / Redo */}
-      <button onClick={onUndo} className={btn} title="撤销 (⌘Z)"><Undo2 size={14} /></button>
-      <button onClick={onRedo} className={btn} title="重做 (⌘⇧Z)"><Redo2 size={14} /></button>
+      <button onClick={onUndo} className={btn} title="撤销 (⌘Z)" aria-label="撤销"><Undo2 size={14} /></button>
+      <button onClick={onRedo} className={btn} title="重做 (⌘⇧Z)" aria-label="重做"><Redo2 size={14} /></button>
 
       <div className={separator} />
 
       {/* Heading dropdown */}
       <div className="relative" ref={headingRef}>
-        <button className={btn} title="标题" onClick={() => setShowHeading(v => !v)}><Type size={15} /></button>
+        <button className={btn} title="标题" aria-label="标题选择" onClick={() => setShowHeading(v => !v)}><Type size={15} /></button>
         {showHeading && (
           <div className="absolute top-full left-0 mt-0.5 bg-[var(--color-surface)] rounded-lg shadow-xl border border-[var(--color-border)] py-1 min-w-[160px] z-50 animate-in">
             {HEADING_ENTRIES.map(h => (
@@ -168,30 +123,30 @@ function Toolbar({
       </div>
 
       {/* Inline formatting */}
-      <button onClick={() => onFormat?.('bold')} className={btn} title="加粗 (⌘B)"><Bold size={14} /></button>
-      <button onClick={() => onFormat?.('italic')} className={btn} title="斜体 (⌘I)"><Italic size={14} /></button>
-      <button onClick={() => onFormat?.('strikethrough')} className={btn} title="删除线"><Strikethrough size={14} /></button>
-      <button onClick={() => onFormat?.('underline')} className={btn} title="下划线"><Underline size={14} /></button>
-      <ColorPicker onFormat={onFormat} btn={btn} />
-      <button onClick={() => onFormat?.('highlight')} className={btn} title="高亮"><Highlighter size={14} /></button>
-      <button onClick={() => onFormat?.('code')} className={btn} title="行内代码"><Code size={14} /></button>
-      <button onClick={() => onFormat?.('link')} className={btn} title="链接"><Link2 size={14} /></button>
+      <button onClick={() => onFormat?.('bold')} className={btn} title="加粗 (⌘B)" aria-label="加粗"><Bold size={14} /></button>
+      <button onClick={() => onFormat?.('italic')} className={btn} title="斜体 (⌘I)" aria-label="斜体"><Italic size={14} /></button>
+      <button onClick={() => onFormat?.('strikethrough')} className={btn} title="删除线" aria-label="删除线"><Strikethrough size={14} /></button>
+      <button onClick={() => onFormat?.('underline')} className={btn} title="下划线" aria-label="下划线"><Underline size={14} /></button>
+      <ColorPicker onColor={(c) => onFormat?.('color', c)} btnClass={btn} />
+      <button onClick={() => onFormat?.('highlight')} className={btn} title="高亮" aria-label="高亮"><Highlighter size={14} /></button>
+      <button onClick={() => onFormat?.('code')} className={btn} title="行内代码" aria-label="行内代码"><Code size={14} /></button>
+      <button onClick={() => onFormat?.('link')} className={btn} title="链接" aria-label="链接"><Link2 size={14} /></button>
 
       <div className={separator} />
 
       {/* Block elements */}
-      <button onClick={() => onBlock?.('quote')} className={btn} title="引用"><Quote size={14} /></button>
-      <button onClick={() => onBlock?.('ul')} className={btn} title="无序列表"><List size={14} /></button>
-      <button onClick={() => onBlock?.('ol')} className={btn} title="有序列表"><ListOrdered size={14} /></button>
-      <button onClick={() => onBlock?.('taskList')} className={btn} title="任务列表"><CheckSquare size={14} /></button>
-      <button onClick={() => onBlock?.('codeblock')} className={btn} title="代码块"><FileCode size={14} /></button>
-      <button onClick={() => onBlock?.('hr')} className={btn} title="分隔线"><Minus size={14} /></button>
+      <button onClick={() => onBlock?.('quote')} className={btn} title="引用" aria-label="引用"><Quote size={14} /></button>
+      <button onClick={() => onBlock?.('ul')} className={btn} title="无序列表" aria-label="无序列表"><List size={14} /></button>
+      <button onClick={() => onBlock?.('ol')} className={btn} title="有序列表" aria-label="有序列表"><ListOrdered size={14} /></button>
+      <button onClick={() => onBlock?.('taskList')} className={btn} title="任务列表" aria-label="任务列表"><CheckSquare size={14} /></button>
+      <button onClick={() => onBlock?.('codeblock')} className={btn} title="代码块" aria-label="代码块"><FileCode size={14} /></button>
+      <button onClick={() => onBlock?.('hr')} className={btn} title="分隔线" aria-label="分隔线"><Minus size={14} /></button>
 
       <div className={separator} />
 
       {/* More menu - advanced features */}
       <div className="relative" ref={moreRef}>
-        <button className={btn} title="更多" onClick={() => setShowMoreMenu(v => !v)}>
+        <button className={btn} title="更多" aria-label="更多菜单" onClick={() => setShowMoreMenu(v => !v)}>
           <MoreHorizontal size={15} />
         </button>
         {showMoreMenu && (
@@ -267,20 +222,20 @@ function Toolbar({
 
       {/* AI Chat */}
       {onToggleAiChat && (
-        <button onClick={onToggleAiChat} className={btn} title="AI 助手">
+        <button onClick={onToggleAiChat} className={btn} title="AI 助手" aria-label="AI 助手">
           <MessageSquare size={15} className="text-[var(--color-accent)]" />
         </button>
       )}
 
       {/* Settings */}
       {onSettings && (
-        <button onClick={onSettings} className={btn} title="设置">
+        <button onClick={onSettings} className={btn} title="设置" aria-label="设置">
           <Settings size={15} />
         </button>
       )}
 
       {/* Theme toggle */}
-      <button onClick={onToggleTheme} className={btn} data-theme-toggle title={
+      <button onClick={onToggleTheme} className={btn} data-theme-toggle aria-label="切换主题" title={
         theme === 'light' ? '深色模式' : theme === 'dark' ? '梧桐主题' : '浅色模式'
       }>
         {theme === 'light' ? <Moon size={15} /> : theme === 'dark' ? <Sun size={15} /> : <Leaf size={15} />}
@@ -289,4 +244,4 @@ function Toolbar({
   )
 }
 
-export default Toolbar
+export default memo(Toolbar)

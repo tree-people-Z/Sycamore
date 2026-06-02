@@ -47,6 +47,7 @@ export interface EditorSettings {
   enableCondense: boolean
   keepLatestCount: number
   condenseModel: string
+  keybindings?: Record<string, string>
 }
 
 export function sanitizeFileName(title: string): string {

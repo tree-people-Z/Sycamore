@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { FilePlus, Feather, FileText, Folder, Leaf, Link2, Search, Trash2, Pencil, Copy, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
+import { FilePlus, Feather, FileText, Folder, Leaf, Link2, Search } from 'lucide-react'
 import type { FolderEntry } from '../types'
+import ContextMenu from './ContextMenu'
 
 interface WelcomePageProps {
   onNew: () => void
@@ -243,44 +244,19 @@ function WelcomePage({ onNew, onOpenFile, onLinkFolder, linkedFolderPath, folder
       )}
 
       {contextMenu && (
-        <div
-          className="fixed z-50 min-w-[150px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl py-1.5"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => handleRename(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
-          >
-            <Pencil size={13} />
-            <span>重命名</span>
-          </button>
-          <button
-            onClick={() => handleOpenFolder(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
-          >
-            <ExternalLink size={13} />
-            <span>打开文件夹</span>
-          </button>
-          <button
-            onClick={() => handleCopyPath(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors text-left"
-          >
-            <Copy size={13} />
-            <span>复制路径</span>
-          </button>
-          <div className="h-px bg-[var(--color-border)] mx-2 my-1" />
-          <button
-            onClick={() => handleDelete(contextMenu.entry)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-500 hover:bg-red-500/10 transition-colors text-left"
-          >
-            <Trash2 size={13} />
-            <span>删除</span>
-          </button>
-        </div>
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          entry={contextMenu.entry}
+          onClose={() => setContextMenu(null)}
+          onRename={(entry) => handleRename({ name: entry.name, path: entry.path, isDirectory: entry.isDirectory, preview: '', mtime: 0, size: 0 })}
+          onOpenFolder={(entry) => handleOpenFolder({ name: entry.name, path: entry.path, isDirectory: entry.isDirectory, preview: '', mtime: 0, size: 0 })}
+          onCopyPath={handleCopyPath}
+          onDelete={(entry) => handleDelete({ name: entry.name, path: entry.path, isDirectory: entry.isDirectory, preview: '', mtime: 0, size: 0 })}
+        />
       )}
     </>
   )
 }
 
-export default WelcomePage
+export default memo(WelcomePage)

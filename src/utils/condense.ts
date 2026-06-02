@@ -77,8 +77,8 @@ export async function condenseMessages(
         result.set(idx, summary.trim())
         onProgress?.(idx, summary.trim())
       }
-    } catch {
-      // skip failed condensation
+    } catch (e) {
+      console.warn(`Condensation failed for message ${idx}:`, e)
     }
   }
   return result

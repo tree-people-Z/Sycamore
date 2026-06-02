@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getDefaultSaveDir: (): Promise<string> =>
     ipcRenderer.invoke('getDefaultSaveDir'),
 
+  buildExportHtml: (bodyHtml: string, darkMode: boolean): Promise<string> =>
+    ipcRenderer.invoke('buildExportHtml', { bodyHtml, darkMode }),
+
   exportPdfToPath: (filePath: string, html: string, darkMode: boolean): Promise<string | null> =>
     ipcRenderer.invoke('exportPdfToPath', { filePath, html, darkMode }),
 

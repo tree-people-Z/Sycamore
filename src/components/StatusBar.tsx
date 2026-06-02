@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Check, Pencil, Eye, EyeOff, Maximize2, Minimize2 } from 'lucide-react'
 import { WORD_GOAL } from '../constants'
 
@@ -59,7 +60,7 @@ function StatusBar({ wordCount, lineCount, isModified, hasContent, focusMode, on
               className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
                 focusMode ? 'bg-[var(--color-accent-10)] text-[var(--color-accent)]' : 'hover:bg-[var(--color-hover)]'
               }`}
-              title={focusMode ? '退出专注模式' : '专注模式'}
+              title={focusMode ? '退出专注模式' : '专注模式'} aria-label={focusMode ? '退出专注模式' : '专注模式'}
             >
               {focusMode ? <EyeOff size={11} /> : <Eye size={11} />}
             </button>
@@ -70,7 +71,7 @@ function StatusBar({ wordCount, lineCount, isModified, hasContent, focusMode, on
             <button
               onClick={onToggleEditorWidth}
               className="flex items-center gap-1 px-2 py-0.5 rounded hover:bg-[var(--color-hover)] transition-colors"
-              title={editorWide ? '标准宽度' : '宽屏模式'}
+              title={editorWide ? '标准宽度' : '宽屏模式'} aria-label={editorWide ? '标准宽度' : '宽屏模式'}
             >
               {editorWide ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
             </button>
@@ -87,4 +88,4 @@ function StatusBar({ wordCount, lineCount, isModified, hasContent, focusMode, on
   )
 }
 
-export default StatusBar
+export default memo(StatusBar)

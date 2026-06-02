@@ -24,22 +24,22 @@ function loadIndex(): IndexEntry[] {
   try {
     const raw = localStorage.getItem(INDEX_KEY)
     return raw ? JSON.parse(raw) : []
-  } catch { return [] }
+  } catch (e) { console.warn('Failed to load conversation index:', e); return [] }
 }
 
 function saveIndex(list: IndexEntry[]) {
-  try { localStorage.setItem(INDEX_KEY, JSON.stringify(list)) } catch {}
+  try { localStorage.setItem(INDEX_KEY, JSON.stringify(list)) } catch (e) { console.warn('Failed to save conversation index:', e) }
 }
 
 function loadConversation(id: string): Conversation | null {
   try {
     const raw = localStorage.getItem(`conversation-${sanitizeId(id)}`)
     return raw ? JSON.parse(raw) : null
-  } catch { return null }
+  } catch (e) { console.warn('Failed to load conversation:', e); return null }
 }
 
 function saveConversation(conv: Conversation) {
-  try { localStorage.setItem(`conversation-${sanitizeId(conv.id)}`, JSON.stringify(conv)) } catch {}
+  try { localStorage.setItem(`conversation-${sanitizeId(conv.id)}`, JSON.stringify(conv)) } catch (e) { console.warn('Failed to save conversation:', e) }
 }
 
 function sanitizeId(id: string) {

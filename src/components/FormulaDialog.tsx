@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface FormulaDialogProps {
   onInsert: (expression: string, displayMode: boolean) => void
@@ -9,10 +10,11 @@ interface FormulaDialogProps {
 function FormulaDialog({ onInsert, onClose }: FormulaDialogProps) {
   const [expression, setExpression] = useState('')
   const [displayMode, setDisplayMode] = useState(false)
+  const panelRef = useFocusTrap(true)
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 bg-black/20 dialog-overlay">
-      <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] min-w-[420px] dialog-panel">
+      <div ref={panelRef} className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] min-w-[420px] dialog-panel">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
           <span className="text-sm font-medium text-[var(--color-text)]">插入公式</span>
           <button
@@ -67,4 +69,4 @@ function FormulaDialog({ onInsert, onClose }: FormulaDialogProps) {
   )
 }
 
-export default FormulaDialog
+export default memo(FormulaDialog)

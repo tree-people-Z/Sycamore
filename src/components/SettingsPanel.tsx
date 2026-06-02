@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, memo, type ReactNode } from 'react'
 import { X, Type, Maximize, Save, RotateCcw, WrapText, Keyboard, Leaf, Bot, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { DEFAULT_SETTINGS } from '../constants'
 import type { EditorSettings } from '../constants'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 export type ShortcutAction =
   | 'bold' | 'italic' | 'strikethrough' | 'highlight' | 'code' | 'link'
@@ -132,8 +133,8 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
 
   const updateSetting = useCallback(<K extends keyof EditorSettings>(key: K, value: EditorSettings[K]) => {
     const updated = { ...localSettings, [key]: value }
-    setLocalSettings(updated as any)
-    onChange(updated as any)
+    setLocalSettings(updated as EditorSettings)
+    onChange(updated as EditorSettings)
   }, [localSettings, onChange])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -153,7 +154,8 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
     else if (key.length === 1) keyName = key.toUpperCase()
     parts.push(keyName)
     const cmd = parts.join('+')
-    ;(updateSetting as any)('keybindings', { ...((localSettings as any).keybindings || {}) as Record<ShortcutAction, string>, [action]: cmd })
+    const updated = { ...localSettings, keybindings: { ...(localSettings.keybindings || {}), [action]: cmd } }
+    setLocalSettings(updated); onChange(updated)
     setRecording(null); recordingRef.current = null
   }, [localSettings, updateSetting])
 
@@ -167,13 +169,14 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
     updateSetting(key, FULL_DEFAULTS[key])
   }, [updateSetting])
 
+  const panelRef = useFocusTrap(true)
   const resetAll = () => {
     setLocalSettings(FULL_DEFAULTS); onChange(FULL_DEFAULTS)
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dialog-overlay">
-      <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[420px] max-h-[80vh] flex flex-col dialog-panel">
+      <div ref={panelRef} className="bg-[var(--color-surface)] rounded-xl shadow-2xl border border-[var(--color-border)] w-[420px] max-h-[80vh] flex flex-col dialog-panel">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <h2 className="text-sm font-semibold text-[var(--color-text)]">设置</h2>
           <button onClick={onClose}
@@ -271,18 +274,18 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                 <label className="text-xs font-medium text-[var(--color-text)]">快捷键</label>
                 <ResetBtn
                   show={Object.keys(DEFAULT_KEYBINDINGS).some(k =>
-                    ((localSettings as any).keybindings || {})[k as ShortcutAction] !== DEFAULT_KEYBINDINGS[k as ShortcutAction]
+                    (localSettings.keybindings || {})[k] !== (DEFAULT_KEYBINDINGS as Record<string, string>)[k]
                   )}
                   onReset={() => {
                     const updated = { ...localSettings, keybindings: { ...DEFAULT_KEYBINDINGS } }
-                    setLocalSettings(updated as any); onChange(updated as any)
+                    setLocalSettings(updated); onChange(updated)
                   }}
                 />
               </div>
               <div className="space-y-0.5">
-                {Object.entries(SHORTCUT_LABELS).map(([action, label]) => {
+                {(Object.entries(SHORTCUT_LABELS) as [ShortcutAction, string][]).map(([action, label]) => {
                   const isRecording = recording === action
-                  const kb = ((localSettings as any).keybindings || {})[action as ShortcutAction]
+                  const kb = (localSettings.keybindings || {})[action]
                   return (
                     <div key={action}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
@@ -290,7 +293,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                       }`}
                       onClick={() => {
                         if (isRecording) { setRecording(null); return }
-                        setRecording(action as ShortcutAction)
+                        setRecording(action)
                       }}>
                       <span className="text-xs text-[var(--color-text)]">{label}</span>
                       <span className={`text-xs font-mono px-2 py-0.5 rounded ${
@@ -489,4 +492,4 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
   )
 }
 
-export default SettingsPanel
+export default memo(SettingsPanel)

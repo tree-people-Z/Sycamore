@@ -21,6 +21,7 @@ export interface ElectronAPI {
   openInExplorer(targetPath: string): Promise<boolean>
   fileExists(filePath: string): Promise<boolean>
   getDefaultSaveDir(): Promise<string>
+  buildExportHtml(bodyHtml: string, darkMode: boolean): Promise<string>
   exportPdfToPath(filePath: string, html: string, darkMode: boolean): Promise<string | null>
 
   onMenuAction(callback: (action: string) => void): () => void
