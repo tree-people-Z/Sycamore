@@ -1,6 +1,5 @@
 <img width="1920" height="1050" alt="屏幕截图 2026-05-23 004611" src="https://github.com/user-attachments/assets/c4a65289-88fa-46ea-a70e-9ed5a5954db6" />
 <img width="1920" height="1050" alt="屏幕截图 2026-05-23 004628" src="https://github.com/user-attachments/assets/2fd075d5-3f4a-4119-bba1-4f755c7dc29d" />
-<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004640" src="https://github.com/user-attachments/assets/f0411617-4fb7-4386-9dc7-facdc20dd353" />
 <img width="1920" height="1050" alt="屏幕截图 2026-05-23 005544" src="https://github.com/user-attachments/assets/426ff2b8-8f89-44bc-a858-e31eb6742451" />
 
 # Sycamore
