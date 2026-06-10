@@ -434,7 +434,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                 <Leaf size={26} className="text-white" />
               </div>
               <h3 className="text-lg font-semibold text-[var(--color-text)] mb-0.5">Sycamore</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mb-6">v1.0.0</p>
+              <p className="text-xs text-[var(--color-text-muted)] mb-6">v2.0.0</p>
 
               <div className="w-full bg-[var(--color-bg)] rounded-xl border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
                 <div className="flex items-center justify-between px-4 py-3">
