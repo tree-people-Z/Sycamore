@@ -16,11 +16,27 @@ export function useFileSystem(showFolderDialog: () => Promise<string | null>) {
   }, [])
 
   useEffect(() => {
-    if (linkedFolderPath && !pendingLinkRef.current) {
-      loadFolder(linkedFolderPath).then(entries => {
-        setFolderPath(linkedFolderPath)
-        setFolderEntries(entries)
-      })
+    if (!!linkedFolderPath && !pendingLinkRef.current) {
+      ;(async () => {
+        const exists = await window.electronAPI?.fileExists(linkedFolderPath)
+        if (!exists) {
+          pendingLinkRef.current = true
+          const defaultDir = await window.electronAPI?.getDefaultSaveDir()
+          if (defaultDir) {
+            await window.electronAPI?.makeDirectory(defaultDir)
+            localStorage.setItem(LINKED_FOLDER_KEY, defaultDir)
+            const entries = await loadFolder(defaultDir)
+            setFolderPath(defaultDir)
+            setFolderEntries(entries)
+            setLinkedFolderPath(defaultDir)
+          }
+          pendingLinkRef.current = false
+        } else {
+          const entries = await loadFolder(linkedFolderPath)
+          setFolderPath(linkedFolderPath)
+          setFolderEntries(entries)
+        }
+      })()
     } else if (!linkedFolderPath && !pendingLinkRef.current) {
       pendingLinkRef.current = true
       ;(async () => {
