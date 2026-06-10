@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import type { FolderEntry } from '../types'
 import ContextMenu from './ContextMenu'
+import { useContextMenuDismiss } from '../hooks/useFileActions'
 
 interface SidebarProps {
   onNew: () => void
@@ -42,7 +43,7 @@ function Sidebar({
 
   useEffect(() => {
     try { localStorage.setItem('sidebar-expanded-dirs', JSON.stringify([...expandedDirs])) }
-    catch {}
+    catch { /* ignore */ }
   }, [expandedDirs])
 
   useEffect(() => {
@@ -52,17 +53,7 @@ function Sidebar({
     }
   }, [isVisible])
 
-  useEffect(() => {
-    const dismiss = () => setContextMenu(null)
-    if (contextMenu) {
-      document.addEventListener('click', dismiss)
-      document.addEventListener('scroll', dismiss, true)
-    }
-    return () => {
-      document.removeEventListener('click', dismiss)
-      document.removeEventListener('scroll', dismiss, true)
-    }
-  }, [contextMenu])
+  useContextMenuDismiss(contextMenu, () => setContextMenu(null))
 
   useEffect(() => {
     if (isVisible && linkedFolderPath) {
@@ -98,11 +89,8 @@ function Sidebar({
       const count = await window.electronAPI?.countDirectoryContents(entry.path) ?? 0
       if (count > 0 && !window.confirm(`文件夹"${name}"包含 ${count} 个文件，确定移到回收站吗？`)) return
     } else if (!window.confirm(`确定要删除"${name}"吗？`)) return
-    const ok = await window.electronAPI?.deleteEntry(entry.path)
-    if (ok) {
-      if (currentFilePath === entry.path) {
-        setCurrentFilePath(null)
-      }
+    if (await window.electronAPI?.deleteEntry(entry.path)) {
+      if (currentFilePath === entry.path) setCurrentFilePath(null)
       onRefreshFolder?.()
     }
   }, [currentFilePath, onRefreshFolder])
@@ -114,11 +102,8 @@ function Sidebar({
     if (!newName || newName === oldName) return
     const dir = entry.path.replace(/[/\\][^/\\]+$/, '')
     const newPath = dir + '\\' + newName + (entry.isDirectory ? '' : '.json')
-    const ok = await window.electronAPI?.renameEntry(entry.path, newPath)
-    if (ok) {
-      if (currentFilePath === entry.path) {
-        setCurrentFilePath(newPath)
-      }
+    if (await window.electronAPI?.renameEntry(entry.path, newPath)) {
+      if (currentFilePath === entry.path) setCurrentFilePath(newPath)
       onRefreshFolder?.()
     }
   }, [currentFilePath, onRefreshFolder])

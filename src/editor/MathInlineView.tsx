@@ -29,6 +29,9 @@ export function MathInlineView({ node, editor, getPos }: NodeViewProps) {
       ref={ref}
       className="cm-math-widget"
       onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === 'Enter') handleClick() }}
+      role="button"
+      tabIndex={0}
       contentEditable={false}
       style={{ cursor: 'pointer', display: 'inline-block', padding: '0 2px' }}
     >

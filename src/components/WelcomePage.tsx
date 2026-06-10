@@ -115,14 +115,16 @@ function WelcomePage({ onNew, onOpenFile, onLinkFolder, linkedFolderPath, folder
           </div>
 
           <div className="px-4 py-2 flex justify-center">
-            <div className="flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden transition-all duration-300 ease-out cursor-text"
+            <div role="button" tabIndex={0}
+              className="flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden transition-all duration-300 ease-out cursor-text"
               style={{ width: searchExpanded ? 280 : 120, height: 36 }}
               onClick={() => {
                 if (!searchExpanded) {
                   setSearchExpanded(true)
                   setTimeout(() => searchInputRef.current?.focus(), 200)
                 }
-              }}>
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { if (!searchExpanded) { setSearchExpanded(true); setTimeout(() => searchInputRef.current?.focus(), 200) } } }}>
               <Search size={16} className="text-[var(--color-text-muted)] flex-shrink-0 ml-2.5" />
               <input ref={searchInputRef} type="text"
                 placeholder={searchExpanded ? "搜索笔记..." : "搜索"}

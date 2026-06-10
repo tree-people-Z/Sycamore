@@ -11,6 +11,7 @@ import SettingsPanel from './components/SettingsPanel'
 import FormulaDialog from './components/FormulaDialog'
 import ChartDialog from './components/ChartDialog'
 import Dialogs from './components/Dialogs'
+import ImageInputDialog from './components/ImageInputDialog'
 import ToastContainer from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
 import { useFileSystem } from './hooks/useFileSystem'
@@ -20,7 +21,8 @@ import { useDialogs } from './hooks/useDialogs'
 import { useToast } from './hooks/useToast'
 import { useAppUIState } from './hooks/useAppUIState'
 import type { InlineFormatType, BlockFormatType } from './types'
-import { batchConvertMd } from './utils/markdown-convert'
+import { convertMarkdownToJSON } from './utils/markdown-convert'
+import { extractFileName } from './utils/path'
 import { on } from './utils/emitter'
 
 function App() {
@@ -130,7 +132,7 @@ function App() {
     setShowWelcome(false)
     setHasContent(true)
     await editor.importMarkdown(content)
-    const fileName = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+    const fileName = extractFileName(fp)
     editor.setTitle(fileName)
   }, [showOpenDialog, setShowWelcome])
 
@@ -149,7 +151,7 @@ function App() {
       await Promise.all(batch.map(async (entry) => {
         const content = await window.electronAPI?.readFile(entry.path)
         if (!content) return
-        const json = await batchConvertMd(content)
+        const json = await convertMarkdownToJSON(content)
         const date = entry.mtime ? new Date(entry.mtime) : new Date()
         const monthDir = `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月`
         const dir = baseDir + '/' + monthDir
@@ -187,8 +189,8 @@ function App() {
         case 'exit': await handleExit(); break
         case 'undo': editor.undo(); break
         case 'redo': editor.redo(); break
-        case 'cut': editor.focus(); try { document.execCommand('cut') } catch {}; break
-        case 'copy': try { const t = editor.getText(); if (t) navigator.clipboard.writeText(t) } catch {}; break
+        case 'cut': editor.focus(); try { document.execCommand('cut') } catch { /* ignore */ } break
+        case 'copy': try { const t = editor.getText(); if (t) navigator.clipboard.writeText(t) } catch { /* ignore */ } break
         case 'paste': editor.focus(); break
         case 'export-html': await handleExportHtml(); break
         case 'export-pdf': await handleExportPdf(); break
@@ -274,7 +276,7 @@ function App() {
     if (content != null) {
       setShowWelcome(false)
       setHasContent(true)
-      const fileName = filePath.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+      const fileName = extractFileName(filePath)
       editor.setTitle(fileName)
       editor.setFilePath(filePath)
       try { editor.setContent(JSON.parse(content)) }
@@ -387,27 +389,8 @@ function App() {
       </div>
 
       {ui.showImageInput && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 bg-black/10 dialog-overlay">
-          <div className="bg-[var(--color-surface)] rounded-xl shadow-2xl p-4 border border-[var(--color-border)] min-w-[360px] dialog-panel">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-[var(--color-text)]">插入图片 URL</span>
-              <button onClick={() => { setShowImageInput(false); setImageUrlInput('') }}
-                className="w-6 h-6 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-            <input autoFocus type="text" value={ui.imageUrlInput} onChange={e => setImageUrlInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleImageSubmit(); if (e.key === 'Escape') { setShowImageInput(false); setImageUrlInput('') } }}
-              placeholder="https://..."
-              className="w-full h-9 px-3 text-sm bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] transition-colors" />
-            <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => { setShowImageInput(false); setImageUrlInput('') }}
-                className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-hover)] text-[var(--color-text)] hover:opacity-80 transition-opacity">取消</button>
-              <button onClick={handleImageSubmit}
-                className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-accent)] text-white hover:opacity-80 transition-colors">插入</button>
-            </div>
-          </div>
-        </div>
+        <ImageInputDialog value={ui.imageUrlInput} onChange={setImageUrlInput}
+          onSubmit={handleImageSubmit} onClose={() => { setShowImageInput(false); setImageUrlInput('') }} />
       )}
 
       {ui.showFormulaDialog && (

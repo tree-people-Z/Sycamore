@@ -3,10 +3,16 @@ import { flushSync } from 'react-dom'
 import { THEME_KEY, THEME_CYCLE } from '../constants'
 import type { Theme } from '../constants'
 
+function getInitialTheme(): Theme {
+  try {
+    return (localStorage.getItem(THEME_KEY) as Theme) || 'sycamore'
+  } catch {
+    return 'sycamore'
+  }
+}
+
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(THEME_KEY) as Theme) || 'light',
-  )
+  const [theme, setTheme] = useState<Theme>(getInitialTheme)
 
   const cycleTheme = useCallback(() => {
     const apply = () => {

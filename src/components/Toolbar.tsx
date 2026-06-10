@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo } from 'react'
+import { useState, useRef, memo } from 'react'
 import {
   FilePlus, Save, FolderOpen, Moon, Sun, Leaf,
   Bold, Italic, Strikethrough, Underline, Code, Link2,
@@ -10,6 +10,7 @@ import {
 import type { InlineFormatType, BlockFormatType } from '../types'
 import { HEADING_ENTRIES } from '../types'
 import ColorPicker from './ColorPicker'
+import { useClickOutside } from '../hooks/useClickOutside'
 
 interface ToolbarProps {
   theme: 'light' | 'dark' | 'sycamore'
@@ -57,18 +58,8 @@ function Toolbar({
   const headingRef = useRef<HTMLDivElement>(null)
   const moreRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (headingRef.current && !headingRef.current.contains(e.target as Node)) {
-        setShowHeading(false)
-      }
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  useClickOutside(headingRef, () => setShowHeading(false), showHeading)
+  useClickOutside(moreRef, () => setShowMoreMenu(false), showMoreMenu)
 
   const btn = 'w-7 h-7 flex items-center justify-center text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)] rounded-md transition-colors text-xs'
   const separator = 'w-px h-5 bg-[var(--color-border)] mx-1.5'

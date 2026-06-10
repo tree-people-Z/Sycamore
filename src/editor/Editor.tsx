@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import { useEditor, EditorContent, ReactNodeViewRenderer } from '@tiptap/react'
+import type { Editor as TiptapEditor } from '@tiptap/react'
 import { EditHighlightPlugin } from './extensions/edit-highlight'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -35,9 +36,40 @@ import { useAutoSave } from '../hooks/useAutoSave'
 import { applyEditorStyles } from '../utils/editor-styles'
 import { handleImageFile, insertImage, hasImageItems, getImageFiles } from '../utils/images'
 import { sanitizeFileName } from '../constants'
+import { extractFileName } from '../utils/path'
 import katex from 'katex'
 import TurndownService from 'turndown'
 import { marked } from 'marked'
+
+const MathBlockWithView = MathBlock.extend({
+  addNodeView() { return ReactNodeViewRenderer(MathBlockView) },
+})
+
+const MathInlineWithView = MathInline.extend({
+  addNodeView() { return ReactNodeViewRenderer(MathInlineView) },
+})
+
+type EditorInstance = ReturnType<typeof useEditor>
+
+async function insertMermaidContent(ed: EditorInstance, text: string, deleteSelection: boolean): Promise<boolean> {
+  if (!ed) return false
+  const parts = text.split(/(```mermaid\n[\s\S]*?```)/)
+  if (parts.length <= 1) return false
+  if (deleteSelection) ed.chain().focus().deleteSelection().run()
+  for (const part of parts) {
+    if (!part.trim()) continue
+    const mermaidMatch = part.match(/```mermaid\n([\s\S]*?)```/)
+    if (mermaidMatch) {
+      ed.chain().focus().insertContent({
+        type: 'mermaidDiagram', attrs: { code: mermaidMatch[1].trim() },
+      }).run()
+    } else {
+      const html = await marked.parse(part)
+      ed.chain().focus().insertContent(html as string).run()
+    }
+  }
+  return true
+}
 
 export interface EditorHandle {
   getContent: () => Record<string, unknown>
@@ -146,28 +178,21 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     }
   }, [focusMode])
 
-  const mathBlockWithView = useMemo(() => MathBlock.extend({
-    addNodeView() { return ReactNodeViewRenderer(MathBlockView) },
-  }), [])
-
-  const mathInlineWithView = useMemo(() => MathInline.extend({
-    addNodeView() { return ReactNodeViewRenderer(MathInlineView) },
-  }), [])
-
+  type CmdArgs = { editor: TiptapEditor; range: { from: number; to: number } }
   const slashItems = useMemo(() => ([
-    { title: '标题 1', description: '大标题', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
-    { title: '标题 2', description: '中标题', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
-    { title: '标题 3', description: '小标题', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
-    { title: '引用', description: '引用文本', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleBlockquote().run() },
-    { title: '无序列表', description: '项目列表', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleBulletList().run() },
-    { title: '有序列表', description: '编号列表', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleOrderedList().run() },
-    { title: '任务列表', description: '待办事项', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleTaskList().run() },
-    { title: '代码块', description: '代码片段', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).toggleCodeBlock().run() },
-    { title: '分割线', description: '水平分割线', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).setHorizontalRule().run() },
-    { title: '表格', description: '插入表格', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3 }).run() },
-    { title: '数学公式', description: '行内公式', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mathInline', attrs: { tex: '\\frac{a}{b}' } }).run() },
-    { title: '图表', description: 'Mermaid 图表', command: ({ editor: ed, range }: any) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mermaidDiagram', attrs: { code: 'graph TD\n  A[开始] --> B[结束]' } }).run() },
-    { title: '图片', description: '插入图片', command: ({ editor: ed, range }: any) => {
+    { title: '标题 1', description: '大标题', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
+    { title: '标题 2', description: '中标题', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
+    { title: '标题 3', description: '小标题', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
+    { title: '引用', description: '引用文本', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleBlockquote().run() },
+    { title: '无序列表', description: '项目列表', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleBulletList().run() },
+    { title: '有序列表', description: '编号列表', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleOrderedList().run() },
+    { title: '任务列表', description: '待办事项', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleTaskList().run() },
+    { title: '代码块', description: '代码片段', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).toggleCodeBlock().run() },
+    { title: '分割线', description: '水平分割线', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).setHorizontalRule().run() },
+    { title: '表格', description: '插入表格', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3 }).run() },
+    { title: '数学公式', description: '行内公式', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mathInline', attrs: { tex: '\\frac{a}{b}' } }).run() },
+    { title: '图表', description: 'Mermaid 图表', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mermaidDiagram', attrs: { code: 'graph TD\n  A[开始] --> B[结束]' } }).run() },
+    { title: '图片', description: '插入图片', command: ({ editor: ed, range }: CmdArgs) => {
       const url = prompt('输入图片 URL:')
       if (url) ed.chain().focus().deleteRange(range).setImage({ src: url }).run()
     }},
@@ -185,7 +210,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       TextStyle, Color,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       CodeBlockLowlight.configure({ lowlight }),
-      mathInlineWithView, mathBlockWithView, MermaidDiagram, CustomImage,
+      MathInlineWithView, MathBlockWithView, MermaidDiagram, CustomImage,
       WikiLink.configure({}),
       TaskList, TaskItem.configure({ nested: true }),
       SlashMenu.configure({ items: slashItems }),
@@ -221,7 +246,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           ;(async () => {
             const content = await window.electronAPI?.readFile(fp)
             if (content == null) return
-            const fileName = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+            const fileName = extractFileName(fp)
             setTitle(fileName); titleRef.current = fileName
             filePathRef.current = /\.md$/i.test(fp) ? null : fp
             if (!editor) return
@@ -316,7 +341,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     if (!fp) return
       try { await window.electronAPI?.writeFile(fp, content) } catch (e) { console.error('Save failed:', e); return }
     filePathRef.current = fp
-    const savedTitle = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+    const savedTitle = extractFileName(fp)
     setTitle(savedTitle)
     titleRef.current = savedTitle
     modifiedRef.current = false
@@ -360,24 +385,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     },
     replaceSelection: async (text) => {
       if (!editor) return
-      const parts = text.split(/(```mermaid\n[\s\S]*?```)/)
-      const hasMermaid = parts.length > 1
-      if (hasMermaid) {
-        editor.chain().focus().deleteSelection().run()
-        for (const part of parts) {
-          if (!part.trim()) continue
-          const mermaidMatch = part.match(/```mermaid\n([\s\S]*?)```/)
-          if (mermaidMatch) {
-            editor.chain().focus().insertContent({
-              type: 'mermaidDiagram', attrs: { code: mermaidMatch[1].trim() },
-            }).run()
-          } else {
-            const html = await marked.parse(part)
-            editor.chain().focus().insertContent(html as string).run()
-          }
-        }
-        return
-      }
+      if (await insertMermaidContent(editor, text, true)) return
       const html = await marked.parse(text)
       const { from, to } = editor.state.selection
       if (from === to) {
@@ -416,7 +424,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       if (!filePath) return
       const content = await window.electronAPI?.readFile(filePath)
       if (content == null) return
-      const fileName = filePath.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+      const fileName = extractFileName(filePath)
       setTitle(fileName); titleRef.current = fileName
       suppressModifiedRef.current = true
       if (/\.md$/i.test(filePath)) {
@@ -439,7 +447,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       const content = JSON.stringify(editor.getJSON(), null, 2)
     try { await window.electronAPI?.writeFile(fp, content) } catch (e) { console.error('Save failed:', e); return }
       filePathRef.current = fp
-      const savedTitle = fp.replace(/.*[/\\]/, '').replace(/\.\w+$/, '')
+      const savedTitle = extractFileName(fp)
       setTitle(savedTitle); titleRef.current = savedTitle
       modifiedRef.current = false; onModifiedChangeRef.current?.(false)
       onSavedRef.current?.()
@@ -492,24 +500,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       if (!editor) return
       if (typeof text === 'object') {
         editor.chain().focus().insertContent(text).run()
-      } else {
-        const parts = text.split(/(```mermaid\n[\s\S]*?```)/)
-        const hasMermaid = parts.length > 1
-        if (hasMermaid) {
-          for (const part of parts) {
-            if (!part.trim()) continue
-            const mermaidMatch = part.match(/```mermaid\n([\s\S]*?)```/)
-            if (mermaidMatch) {
-              editor.chain().focus().insertContent({
-                type: 'mermaidDiagram', attrs: { code: mermaidMatch[1].trim() },
-              }).run()
-            } else {
-              const html = await marked.parse(part)
-              editor.chain().focus().insertContent(html as string).run()
-            }
-          }
-          return
-        }
+      } else if (!(await insertMermaidContent(editor, text, false))) {
         const html = await marked.parse(text)
         editor.chain().focus().insertContent(html as string).run()
       }

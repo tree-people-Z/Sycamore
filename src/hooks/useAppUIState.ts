@@ -1,4 +1,4 @@
-import { useReducer, useCallback } from 'react'
+import { useReducer, useMemo } from 'react'
 
 interface UIState {
   showWelcome: boolean
@@ -76,23 +76,24 @@ function uiReducer(state: UIState, action: UIAction): UIState {
 export function useAppUIState() {
   const [ui, dispatch] = useReducer(uiReducer, initialUIState)
 
-  return {
-    ui,
-    setShowWelcome: useCallback((value: boolean) => dispatch({ type: 'setShowWelcome', value }), []),
-    setSidebarVisible: useCallback((value: boolean) => dispatch({ type: 'setSidebarVisible', value }), []),
-    setSidebarPinned: useCallback((value: boolean) => dispatch({ type: 'setSidebarPinned', value }), []),
-    toggleFocusMode: useCallback(() => dispatch({ type: 'toggleFocusMode' }), []),
-    toggleEditorWide: useCallback(() => dispatch({ type: 'toggleEditorWide' }), []),
-    toggleAiChat: useCallback(() => dispatch({ type: 'toggleAiChat' }), []),
-    openAiChat: useCallback(() => dispatch({ type: 'openAiChat' }), []),
-    setShowSettings: useCallback((value: boolean) => dispatch({ type: 'setShowSettings', value }), []),
-    setShowFormulaDialog: useCallback((value: boolean) => dispatch({ type: 'setShowFormulaDialog', value }), []),
-    setShowChartDialog: useCallback((value: boolean) => dispatch({ type: 'setShowChartDialog', value }), []),
-    setShowImageInput: useCallback((value: boolean) => dispatch({ type: 'setShowImageInput', value }), []),
-    setImageUrlInput: useCallback((value: string) => dispatch({ type: 'setImageUrlInput', value }), []),
-    setSelectedText: useCallback((value: string) => dispatch({ type: 'setSelectedText', value }), []),
-    incrementWelcomeKey: useCallback(() => dispatch({ type: 'incrementWelcomeKey' }), []),
-    setDocKey: useCallback((value: string) => dispatch({ type: 'setDocKey', value }), []),
-    closeSidebar: useCallback(() => dispatch({ type: 'closeSidebar' }), []),
-  }
+  const actions = useMemo(() => ({
+    setShowWelcome: (value: boolean) => dispatch({ type: 'setShowWelcome', value }),
+    setSidebarVisible: (value: boolean) => dispatch({ type: 'setSidebarVisible', value }),
+    setSidebarPinned: (value: boolean) => dispatch({ type: 'setSidebarPinned', value }),
+    toggleFocusMode: () => dispatch({ type: 'toggleFocusMode' }),
+    toggleEditorWide: () => dispatch({ type: 'toggleEditorWide' }),
+    toggleAiChat: () => dispatch({ type: 'toggleAiChat' }),
+    openAiChat: () => dispatch({ type: 'openAiChat' }),
+    setShowSettings: (value: boolean) => dispatch({ type: 'setShowSettings', value }),
+    setShowFormulaDialog: (value: boolean) => dispatch({ type: 'setShowFormulaDialog', value }),
+    setShowChartDialog: (value: boolean) => dispatch({ type: 'setShowChartDialog', value }),
+    setShowImageInput: (value: boolean) => dispatch({ type: 'setShowImageInput', value }),
+    setImageUrlInput: (value: string) => dispatch({ type: 'setImageUrlInput', value }),
+    setSelectedText: (value: string) => dispatch({ type: 'setSelectedText', value }),
+    incrementWelcomeKey: () => dispatch({ type: 'incrementWelcomeKey' }),
+    setDocKey: (value: string) => dispatch({ type: 'setDocKey', value }),
+    closeSidebar: () => dispatch({ type: 'closeSidebar' }),
+  }), [dispatch])
+
+  return { ui, ...actions }
 }

@@ -7,6 +7,11 @@ import electron from 'vite-plugin-electron'
 const katexCss = readFileSync(join(__dirname, 'node_modules/katex/dist/katex.min.css'), 'utf-8')
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      'lucide-react': 'lucide-react/dist/cjs/lucide-react.js',
+    },
+  },
   plugins: [
     react(),
     electron([

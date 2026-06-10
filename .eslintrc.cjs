@@ -7,7 +7,6 @@ module.exports = {
     'plugin:react-hooks/recommended',
     'plugin:react/recommended',
     'plugin:jsx-a11y/recommended',
-    'plugin:vitest/recommended',
   ],
   ignorePatterns: ['dist', 'dist-electron', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',

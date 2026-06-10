@@ -28,9 +28,22 @@ const QUICK_ACTIONS = [
 
 const CONTEXT_LIMIT = 128000
 
+function sanitizeHtml(html: string): string {
+  const el = document.createElement('div')
+  el.innerHTML = html
+  el.querySelectorAll('script, iframe, object, embed').forEach(n => n.remove())
+  el.querySelectorAll('*').forEach(n => {
+    Array.from(n.attributes).forEach(attr => {
+      if (attr.name.startsWith('on')) n.removeAttribute(attr.name)
+    })
+  })
+  return el.innerHTML
+}
+
 function renderMarkdown(content: string): string {
   const html = marked.parse(content) as string
-  return html.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+  const safe = sanitizeHtml(html)
+  return safe.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
     (_, code) => `<div class="mermaid-block" data-mermaid="${encodeURIComponent(code)}">图表加载中...</div>`)
 }
 
@@ -118,8 +131,9 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
     if (indices.length === 0) return
     condenseLockRef.current = true
     condenseMessages(messages, indices, settings, (idx, summary) => {
-      messages[idx] = { ...messages[idx], condensedContent: summary }
-      setMessages([...messages])
+      const newMessages = [...messages]
+      newMessages[idx] = { ...newMessages[idx], condensedContent: summary }
+      setMessages(newMessages)
     }).then(() => {
       condenseLockRef.current = false
       if (indices.length > 0) {
@@ -135,8 +149,8 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
   const nearLimit = totalTokens > CONTEXT_LIMIT * 0.8
   const activeConv = getActive()
 
-  const buildMessagesForAI = useCallback((msgs: Message[], conv: typeof activeConv, isRetry: boolean): any[] => {
-    const result: any[] = []
+  const buildMessagesForAI = useCallback((msgs: Message[], conv: typeof activeConv, isRetry: boolean): { role: string; content: string }[] => {
+    const result: { role: string; content: string }[] = []
     const len = isRetry ? msgs.length - 1 : msgs.length
     for (let i = 0; i < len; i++) {
       const m = msgs[i]
@@ -191,7 +205,7 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
       const sysMsg = `你工作在 Sycamore 写作软件中。${contextMsg}${selMsg}${rules}`
 
       const activeConv = getActive()
-      const allMsgs: any[] = [{ role: 'system', content: sysMsg }]
+      const allMsgs: { role: string; content: string }[] = [{ role: 'system', content: sysMsg }]
       allMsgs.push(...buildMessagesForAI(updatedMessages, activeConv, isRetry))
       allMsgs.push({ role: 'user', content: userText })
 
@@ -215,8 +229,8 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
       }, abort.signal)
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       updateLastMessage(currentConvId, aiContent)
-    } catch (e: any) {
-      if (e.name !== 'AbortError') {
+    } catch (e: unknown) {
+      if ((e as Error).name !== 'AbortError') {
         setMessages([...updatedMessages.slice(0, -1), { role: 'assistant', content: '请求失败，请检查 API 设置' }])
       }
     }
@@ -277,7 +291,7 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
           >
             <Bot size={14} className="text-[var(--color-accent)] flex-shrink-0" />
             {editingTitle ? (
-              <input autoFocus
+              <input ref={(el) => el?.focus()}
                 className="bg-transparent border-b border-[var(--color-accent)] outline-none text-xs font-medium w-24"
                 value={editTitleValue}
                 onChange={e => setEditTitleValue(e.target.value)}
@@ -299,7 +313,7 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
              <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-xl z-50 min-w-[200px] max-h-[300px] overflow-y-auto conv-list-dropdown">
               <div className="py-1">
                 {conversations.map(c => (
-                  <div key={c.id} onClick={() => handleSelectConv(c.id)}
+                  <div key={c.id} onClick={() => handleSelectConv(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') handleSelectConv(c.id) }}
                     className={`group flex items-center gap-2 px-3 py-2 text-xs cursor-pointer transition-colors ${c.id === activeId ? 'bg-[var(--color-accent-10)] text-[var(--color-accent)]' : 'text-[var(--color-text)] hover:bg-[var(--color-hover)]'}`}>
                     <Bot size={12} className="flex-shrink-0 opacity-60" />
                     <div className="flex-1 min-w-0">

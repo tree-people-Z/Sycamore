@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState, memo } from 'react'
 import { Pencil, ExternalLink, Copy, Trash2 } from 'lucide-react'
 
 interface ContextMenuEntry {
@@ -19,6 +19,20 @@ interface ContextMenuProps {
 }
 
 function ContextMenu({ x, y, entry, onClose, onRename, onOpenFolder, onCopyPath, onDelete }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ left: x, top: y })
+
+  useEffect(() => {
+    setPos({ left: x, top: y })
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect()
+      setPos({
+        left: Math.min(x, window.innerWidth - rect.width - 8),
+        top: Math.min(y, window.innerHeight - rect.height - 8),
+      })
+    }
+  }, [x, y])
+
   useEffect(() => {
     const dismiss = () => onClose()
     document.addEventListener('click', dismiss)
@@ -35,8 +49,10 @@ function ContextMenu({ x, y, entry, onClose, onRename, onOpenFolder, onCopyPath,
 
   return (
     <div
+      ref={menuRef}
       className="fixed z-50 min-w-[150px] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-2xl py-1.5"
-      style={{ left: x, top: y }}
+      style={{ left: pos.left, top: pos.top }}
+      tabIndex={-1}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}
       role="menu"
@@ -89,4 +105,4 @@ function ContextMenu({ x, y, entry, onClose, onRename, onOpenFolder, onCopyPath,
   )
 }
 
-export default ContextMenu
+export default memo(ContextMenu)

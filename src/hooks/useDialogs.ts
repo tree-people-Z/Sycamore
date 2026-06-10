@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 
 export type UnsavedResult = 'save' | 'discard' | 'cancel'
 
@@ -10,6 +10,16 @@ export interface DialogState {
 export function useDialogs() {
   const [dialogState, setDialogState] = useState<DialogState | null>(null)
   const dialogRef = useRef<DialogState | null>(null)
+
+  useEffect(() => {
+    return () => {
+      const state = dialogRef.current
+      if (state && 'resolve' in state) {
+        state.resolve('cancel')
+      }
+      dialogRef.current = null
+    }
+  }, [])
 
   const showUnsavedDialog = useCallback((): Promise<UnsavedResult> => {
     return new Promise(resolve => {

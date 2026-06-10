@@ -37,7 +37,7 @@ const extensions = [
   TaskList, TaskItem.configure({ nested: true }),
 ]
 
-export async function batchConvertMd(markdown: string): Promise<Record<string, unknown>> {
+export async function convertMarkdownToJSON(markdown: string): Promise<Record<string, unknown>> {
   const html = await marked.parse(markdown)
   return generateJSON(html, extensions) as Record<string, unknown>
 }

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { CheckCircle, XCircle, Info, X } from 'lucide-react'
 import type { Toast, ToastType } from '../hooks/useToast'
 
@@ -20,7 +21,7 @@ function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs text-[var(--color-text)] animate-in slide-in-from-right"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs text-[var(--color-text)]"
           style={{ minWidth: '200px', maxWidth: '360px' }}
         >
           {ICONS[toast.type]}
@@ -38,4 +39,4 @@ function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   )
 }
 
-export default ToastContainer
+export default memo(ToastContainer)

@@ -13,7 +13,7 @@ function Dialogs({ dialogState, onSaveCurrent, onClose }: DialogsProps) {
 
   return (
     <UnsavedDialog
-      onSave={async () => { await onSaveCurrent(); onClose('save') }}
+      onSave={async () => { try { await onSaveCurrent() } catch { /* swallow */ } onClose('save') }}
       onDiscard={() => onClose('discard')}
       onCancel={() => onClose('cancel')}
     />

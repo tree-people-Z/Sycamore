@@ -7,6 +7,11 @@ export function useAutoSave(
   getModified: () => boolean,
 ) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const saveFnRef = useRef(saveFn)
+  const getModifiedRef = useRef(getModified)
+
+  saveFnRef.current = saveFn
+  getModifiedRef.current = getModified
 
   useEffect(() => {
     if (timerRef.current) {
@@ -15,10 +20,10 @@ export function useAutoSave(
     }
     if (!enabled || intervalSeconds <= 0) return
     timerRef.current = setInterval(() => {
-      if (getModified()) saveFn()
+      if (getModifiedRef.current()) saveFnRef.current()
     }, intervalSeconds * 1000)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [enabled, intervalSeconds, saveFn, getModified])
+  }, [enabled, intervalSeconds])
 }

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 
-function WindowControls() {
+const WindowControls = memo(function WindowControls() {
   const [isMaximized, setIsMaximized] = useState(false)
 
   useEffect(() => {
@@ -49,6 +49,6 @@ function WindowControls() {
       </button>
     </div>
   )
-}
+})
 
 export default WindowControls

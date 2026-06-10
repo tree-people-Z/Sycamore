@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { SETTINGS_KEY, DEFAULT_SETTINGS } from '../constants'
 import type { EditorSettings } from '../constants'
 
@@ -14,20 +14,20 @@ export function loadSettings(): EditorSettings {
   return { ...DEFAULT_SETTINGS }
 }
 
-export function saveSettings(settings: EditorSettings) {
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
-  } catch {
-    // ignore storage errors
-  }
-}
-
 export function useSettings() {
   const [settings, setSettings] = useState<EditorSettings>(loadSettings)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleSettingsChange = useCallback((newSettings: EditorSettings) => {
     setSettings(newSettings)
-    saveSettings(newSettings)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings))
+      } catch {
+        // ignore storage errors
+      }
+    }, 300)
   }, [])
 
   return { settings, handleSettingsChange }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info'
 
@@ -13,6 +13,17 @@ let toastIdCounter = 0
 export function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    const timers = timersRef.current
+    return () => {
+      mountedRef.current = false
+      timers.forEach(timer => clearTimeout(timer))
+      timers.clear()
+    }
+  }, [])
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id))
@@ -26,7 +37,9 @@ export function useToast() {
   const addToast = useCallback((message: string, type: ToastType = 'info', duration = 3000) => {
     const id = `toast-${++toastIdCounter}`
     setToasts(prev => [...prev, { id, message, type }])
-    const timer = setTimeout(() => removeToast(id), duration)
+    const timer = setTimeout(() => {
+      if (mountedRef.current) removeToast(id)
+    }, duration)
     timersRef.current.set(id, timer)
     return id
   }, [removeToast])

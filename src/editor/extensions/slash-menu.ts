@@ -32,16 +32,19 @@ export const SlashMenu = Extension.create<SlashMenuOptions>({
     let popup: Instance | null = null
     let isActive = false
 
-    const renderMenu = (from: number) => {
-      if (popup) popup.destroy()
-
+    const buildMenu = (from: number): HTMLDivElement => {
       const container = document.createElement('div')
       container.className = 'slash-menu'
 
       this.options.items.forEach((item) => {
         const btn = document.createElement('button')
         btn.className = 'slash-menu-item'
-        btn.innerHTML = `<span>${item.icon || ''} ${item.title}</span><small>${item.description}</small>`
+        const span = document.createElement('span')
+        if (item.icon) span.textContent = item.icon + ' '
+        span.append(document.createTextNode(item.title))
+        const small = document.createElement('small')
+        small.textContent = item.description
+        btn.append(span, small)
         btn.addEventListener('mousedown', (e) => {
           e.preventDefault()
           item.command({
@@ -55,8 +58,17 @@ export const SlashMenu = Extension.create<SlashMenuOptions>({
         container.appendChild(btn)
       })
 
+      return container
+    }
+
+    const renderMenu = (from: number) => {
+      if (popup) {
+        popup.setContent(buildMenu(from))
+        return
+      }
+
       popup = tippy('body', {
-        content: container,
+        content: buildMenu(from),
         placement: 'bottom-start',
         trigger: 'manual',
         interactive: true,

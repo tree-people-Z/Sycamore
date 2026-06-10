@@ -3,6 +3,7 @@ import { X, Type, Maximize, Save, RotateCcw, WrapText, Keyboard, Leaf, Bot, Eye,
 import { DEFAULT_SETTINGS } from '../constants'
 import type { EditorSettings } from '../constants'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import AiProviderDropdown from './AiProviderDropdown'
 
 export type ShortcutAction =
   | 'bold' | 'italic' | 'strikethrough' | 'highlight' | 'code' | 'link'
@@ -29,6 +30,7 @@ const AI_PROVIDERS = [
   { label: 'OpenAI', url: 'https://api.openai.com/v1' },
   { label: 'DeepSeek', url: 'https://api.deepseek.com' },
   { label: 'Groq', url: 'https://api.groq.com/openai/v1' },
+  { label: 'OpenRouter', url: 'https://openrouter.ai/api/v1' },
   { label: '智谱 GLM', url: 'https://open.bigmodel.cn/api/paas/v4' },
   { label: '阿里百炼', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
   { label: '硅基流动', url: 'https://api.siliconflow.cn/v1' },
@@ -118,24 +120,23 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
   const [showApiKey, setShowApiKey] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showCustomUrl, setShowCustomUrl] = useState(false)
-  const [showModelList, setShowModelList] = useState(false)
-  const [modelListPos, setModelListPos] = useState({ top: 0, left: 0, width: 0 })
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
-  const modelInputRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<TabKey>('editor')
   const recordingRef = useRef<ShortcutAction | null>(null)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
   useEffect(() => { recordingRef.current = recording }, [recording])
 
   useEffect(() => {
     setShowCustomUrl(!AI_PROVIDERS.some(p => p.url === localSettings.apiBaseUrl))
-  }, [])
+  }, [localSettings.apiBaseUrl])
 
   const updateSetting = useCallback(<K extends keyof EditorSettings>(key: K, value: EditorSettings[K]) => {
     const updated = { ...localSettings, [key]: value }
     setLocalSettings(updated as EditorSettings)
-    onChange(updated as EditorSettings)
-  }, [localSettings, onChange])
+    onChangeRef.current(updated as EditorSettings)
+  }, [localSettings])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const action = recordingRef.current
@@ -155,9 +156,9 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
     parts.push(keyName)
     const cmd = parts.join('+')
     const updated = { ...localSettings, keybindings: { ...(localSettings.keybindings || {}), [action]: cmd } }
-    setLocalSettings(updated); onChange(updated)
+    setLocalSettings(updated); onChangeRef.current(updated)
     setRecording(null); recordingRef.current = null
-  }, [localSettings, updateSetting])
+  }, [localSettings])
 
   useEffect(() => {
     if (!recording) return
@@ -203,7 +204,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
               <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
                 <div className="flex items-center gap-2 mb-2">
                   <Type size={14} className="text-[var(--color-accent)]" />
-                  <label className="text-xs font-medium text-[var(--color-text)]">字体大小</label>
+                  <span className="text-xs font-medium text-[var(--color-text)]">字体大小</span>
                   <ResetBtn show={localSettings.fontSize !== FULL_DEFAULTS.fontSize} onReset={() => resetSetting('fontSize')} />
                   <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.fontSize}px</span>
                 </div>
@@ -213,7 +214,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
               <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
                 <div className="flex items-center gap-2 mb-2">
                   <Maximize size={14} className="text-[var(--color-accent)]" />
-                  <label className="text-xs font-medium text-[var(--color-text)]">编辑器宽度</label>
+                  <span className="text-xs font-medium text-[var(--color-text)]">编辑器宽度</span>
                   <ResetBtn show={localSettings.editorWidth !== FULL_DEFAULTS.editorWidth} onReset={() => resetSetting('editorWidth')} />
                   <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.editorWidth}px</span>
                 </div>
@@ -224,7 +225,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <WrapText size={14} className="text-[var(--color-accent)]" />
-                    <label className="text-xs font-medium text-[var(--color-text)]">自动换行</label>
+                    <span className="text-xs font-medium text-[var(--color-text)]">自动换行</span>
                     <ResetBtn show={localSettings.lineWrapping !== FULL_DEFAULTS.lineWrapping} onReset={() => resetSetting('lineWrapping')} />
                   </div>
                   <Toggle value={localSettings.lineWrapping} onChange={v => updateSetting('lineWrapping', v)} />
@@ -238,7 +239,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Save size={14} className="text-[var(--color-accent)]" />
-                  <label className="text-xs font-medium text-[var(--color-text)]">自动保存</label>
+                  <span className="text-xs font-medium text-[var(--color-text)]">自动保存</span>
                   <ResetBtn show={localSettings.autoSave !== FULL_DEFAULTS.autoSave} onReset={() => resetSetting('autoSave')} />
                 </div>
                 <Toggle value={localSettings.autoSave} onChange={v => updateSetting('autoSave', v)} />
@@ -247,7 +248,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
               {localSettings.autoSave && (
                 <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
                   <div className="flex items-center gap-2 mb-2">
-                    <label className="text-xs text-[var(--color-text-secondary)]">保存间隔</label>
+                    <span className="text-xs text-[var(--color-text-secondary)]">保存间隔</span>
                     <ResetBtn show={localSettings.autoSaveInterval !== FULL_DEFAULTS.autoSaveInterval} onReset={() => resetSetting('autoSaveInterval')} />
                   </div>
                   <div className="flex gap-2">
@@ -271,7 +272,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
             <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
               <div className="flex items-center gap-2 mb-3">
                 <Keyboard size={14} className="text-[var(--color-accent)]" />
-                <label className="text-xs font-medium text-[var(--color-text)]">快捷键</label>
+                <span className="text-xs font-medium text-[var(--color-text)]">快捷键</span>
                 <ResetBtn
                   show={Object.keys(DEFAULT_KEYBINDINGS).some(k =>
                     (localSettings.keybindings || {})[k] !== (DEFAULT_KEYBINDINGS as Record<string, string>)[k]
@@ -287,7 +288,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                   const isRecording = recording === action
                   const kb = (localSettings.keybindings || {})[action]
                   return (
-                    <div key={action}
+                    <div key={action} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') { if (isRecording) { setRecording(null); return } setRecording(action) } }}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
                         isRecording ? 'bg-[var(--color-accent-10)] ring-1 ring-[var(--color-accent)]' : 'hover:bg-[var(--color-surface)]'
                       }`}
@@ -314,24 +315,12 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Bot size={14} className="text-[var(--color-accent)]" />
-                    <label className="text-xs font-medium text-[var(--color-text)]">提供商</label>
+                    <span className="text-xs font-medium text-[var(--color-text)]">提供商</span>
                   </div>
-                  <select
-                    value={AI_PROVIDERS.find(p => p.url === localSettings.apiBaseUrl)?.url || ''}
-                    onChange={e => {
-                      if (e.target.value === '__custom__') {
-                        setShowCustomUrl(true)
-                      } else {
-                        setShowCustomUrl(false)
-                        updateSetting('apiBaseUrl', e.target.value)
-                      }
-                    }}
-                    className="w-full h-9 px-3 text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg outline-none text-[var(--color-text)] focus:border-[var(--color-accent)] transition-colors appearance-none cursor-pointer">
-                    {AI_PROVIDERS.map(p => (
-                      <option key={p.url} value={p.url}>{p.label}</option>
-                    ))}
-                    <option value="__custom__">自定义...</option>
-                  </select>
+                  <AiProviderDropdown providers={AI_PROVIDERS}
+                    value={localSettings.apiBaseUrl}
+                    onChange={(url) => { setShowCustomUrl(false); updateSetting('apiBaseUrl', url) }}
+                    onCustom={() => setShowCustomUrl(true)} />
                   {showCustomUrl && (
                     <input type="text" value={localSettings.apiBaseUrl}
                       onChange={e => updateSetting('apiBaseUrl', e.target.value)}
@@ -341,7 +330,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
 
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <label className="text-xs font-medium text-[var(--color-text)]">API Key</label>
+                    <span className="text-xs font-medium text-[var(--color-text)]">API Key</span>
                   </div>
                   <div className="relative">
                     <input type={showApiKey ? 'text' : 'password'} value={localSettings.apiKey}
@@ -359,7 +348,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
               <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-[var(--color-text)]">模型</label>
+                    <span className="text-xs font-medium text-[var(--color-text)]">模型</span>
                     <button onClick={async () => {
                       if (testStatus === 'testing' || !localSettings.apiKey) return
                       setTestStatus('testing')
@@ -385,29 +374,10 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                   </div>
                 </div>
                 <div>
-                  <input ref={modelInputRef} type="text" value={localSettings.apiModel}
+                  <input type="text" value={localSettings.apiModel}
                     onChange={e => updateSetting('apiModel', e.target.value)}
-                    onFocus={() => {
-                      const rect = modelInputRef.current?.getBoundingClientRect()
-                      if (rect) setModelListPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-                      setShowModelList(true)
-                    }}
-                    onBlur={() => setTimeout(() => setShowModelList(false), 200)}
-                    placeholder="输入模型名称或从下方选择"
+                    placeholder="gpt-4o-mini"
                     className="w-full h-9 px-3 text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] transition-colors" />
-                  {showModelList && (
-                    <div style={{ position: 'fixed', top: modelListPos.top, left: modelListPos.left, width: modelListPos.width }}
-                      className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-xl z-[100] py-1 max-h-48 overflow-y-auto">
-                      {['deepseek-v4-flash', 'deepseek-v4-pro', 'gpt-4o-mini', 'gpt-4o', 'deepseek-chat', 'deepseek-reasoner', 'glm-4', 'qwen-plus', 'claude-sonnet-4-20250514'].map(m => (
-                        <button key={m} onMouseDown={() => { updateSetting('apiModel', m); setShowModelList(false) }}
-                          className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
-                            localSettings.apiModel === m ? 'text-[var(--color-accent)] bg-[var(--color-accent-10)]' : 'text-[var(--color-text)] hover:bg-[var(--color-hover)]'
-                          }`}>
-                          {m}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -423,7 +393,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                 <div className="space-y-3">
                   <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
                     <div className="flex items-center gap-2 mb-2">
-                      <label className="text-xs font-medium text-[var(--color-text)]">Max Tokens</label>
+                      <span className="text-xs font-medium text-[var(--color-text)]">Max Tokens</span>
                       <ResetBtn show={localSettings.apiMaxTokens !== DEFAULT_SETTINGS.apiMaxTokens} onReset={() => resetSetting('apiMaxTokens')} />
                       <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.apiMaxTokens}</span>
                     </div>
@@ -431,7 +401,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                   </div>
                   <div className="bg-[var(--color-bg)] rounded-xl p-4 border border-[var(--color-border)]">
                     <div className="flex items-center gap-2 mb-2">
-                      <label className="text-xs font-medium text-[var(--color-text)]">Temperature</label>
+                      <span className="text-xs font-medium text-[var(--color-text)]">Temperature</span>
                       <ResetBtn show={localSettings.apiTemperature !== DEFAULT_SETTINGS.apiTemperature} onReset={() => resetSetting('apiTemperature')} />
                       <span className="text-xs text-[var(--color-text-secondary)] ml-auto">{localSettings.apiTemperature.toFixed(1)}</span>
                     </div>

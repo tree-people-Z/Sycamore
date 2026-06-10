@@ -63,7 +63,7 @@ function SelectionToolbar({
       {showLinkInput ? (
         <form onSubmit={(e) => { e.preventDefault(); handleLinkSubmit() }} className="flex items-center gap-1">
           <input
-            autoFocus
+            ref={(el) => el?.focus()}
             type="text"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}

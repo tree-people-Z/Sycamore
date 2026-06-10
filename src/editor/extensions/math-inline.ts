@@ -69,8 +69,8 @@ export const MathInline = Node.create<MathInlineOptions>({
         props: {
           transformPastedText: (text) => {
             return text.replace(/\$(.+?)\$/g, (_match: string, tex: string) => {
-              if (/[\\^{}_]/.test(tex)) return tex
-              return _match
+              if (/[\\^{}_]/.test(tex)) return _match
+              return tex
             })
           },
         },

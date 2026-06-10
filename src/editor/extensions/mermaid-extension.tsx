@@ -3,35 +3,9 @@ import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from '@tiptap/r
 import { useState, useEffect, useCallback } from 'react'
 import mermaid from 'mermaid'
 import { Code, Check } from 'lucide-react'
+import { DIAGRAM_TYPES, initMermaid, detectDiagramType } from './mermaid-shared'
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'default',
-  securityLevel: 'strict',
-  fontFamily: 'inherit',
-})
-
-const DIAGRAM_TYPES = [
-  { type: 'flowchart', label: '流程图', alias: ['graph', 'flowchart', 'flowchart-v2', 'td', 'graph TD', 'graph BT', 'graph LR', 'graph RL'] },
-  { type: 'sequence', label: '时序图', alias: ['sequence', 'sequenceDiagram'] },
-  { type: 'classDiagram', label: '类图', alias: ['class', 'classDiagram'] },
-  { type: 'stateDiagram', label: '状态图', alias: ['state', 'stateDiagram', 'stateDiagram-v2'] },
-  { type: 'er', label: 'E-R 图', alias: ['er', 'erDiagram'] },
-  { type: 'gantt', label: '甘特图', alias: ['gantt'] },
-  { type: 'pie', label: '饼图', alias: ['pie'] },
-  { type: 'journey', label: '旅程图', alias: ['journey', 'gitGraph'] },
-]
-
-function detectDiagramType(code: string): string {
-  const trimmed = code.trim()
-  const firstLine = trimmed.split('\n')[0]?.toLowerCase() || ''
-  for (const config of DIAGRAM_TYPES) {
-    if (config.alias.some(alias => firstLine.startsWith(alias) || firstLine === alias)) {
-      return config.type
-    }
-  }
-  return 'flowchart'
-}
+initMermaid()
 
 function MermaidDiagramView({ node, updateAttributes }: NodeViewProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -49,7 +23,7 @@ function MermaidDiagramView({ node, updateAttributes }: NodeViewProps) {
     setError(null)
     try {
       mermaid.parse(code)
-      const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
       const { svg: renderedSvg } = await mermaid.render(id, code)
       setSvg(renderedSvg)
     } catch (err: unknown) {
@@ -59,16 +33,17 @@ function MermaidDiagramView({ node, updateAttributes }: NodeViewProps) {
     }
   }, [code])
 
-  useEffect(() => { renderDiagram() }, [])
+  useEffect(() => { renderDiagram() }, [renderDiagram])
 
   useEffect(() => {
     if (!isEditing) renderDiagram()
-  }, [isEditing])
+  }, [isEditing, renderDiagram])
 
   useEffect(() => {
     const detected = detectDiagramType(code)
     if (detected !== diagramType) setDiagramType(detected)
-  }, [code, diagramType])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code])
 
   const handleUpdate = () => {
     updateAttributes({ code, type: diagramType })
@@ -83,7 +58,7 @@ function MermaidDiagramView({ node, updateAttributes }: NodeViewProps) {
   return (
     <NodeViewWrapper className="mermaid-diagram-wrapper">
       {!isEditing ? (
-        <div className="mermaid-preview" onClick={() => setIsEditing(true)}>
+        <div role="button" tabIndex={0} className="mermaid-preview" onClick={() => setIsEditing(true)} onKeyDown={(e) => { if (e.key === 'Enter') setIsEditing(true) }}>
           {error ? (
             <div className="mermaid-error-content">
               <p className="mermaid-error-title">渲染错误</p>

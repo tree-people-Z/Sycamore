@@ -14,7 +14,7 @@ function addAllowedDir(dirPath: string) {
   try {
     const resolved = path.resolve(dirPath)
     ALLOWED_BASE_DIRS.add(resolved)
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 function isPathSafe(targetPath: string): string | null {
@@ -246,7 +246,7 @@ async function readDirEntries(dirPath: string): Promise<DirEntry[]> {
         const stat = await fs.stat(fullPath)
         entry.mtime = stat.mtimeMs
         entry.size = stat.size
-      } catch {}
+      } catch { /* ignore */ }
       entries.push(entry)
     }
     entries.sort((a, b) => {
@@ -289,7 +289,7 @@ ipcMain.handle('readDirectoryRecursive', async (_event, dirPath: string) => {
       try {
         const content = await fs.readFile(e.path, 'utf-8')
         result[result.length - 1].preview = extractText(JSON.parse(content)).slice(0, 500)
-      } catch {}
+      } catch { /* ignore */ }
     }
   }
   await walk(safePath)
@@ -326,7 +326,7 @@ ipcMain.handle('countDirectoryContents', async (_event, dirPath: string) => {
   if (!safePath) return 0
   try {
     let count = 0
-    async function walk(dir: string) {
+    const walk = async (dir: string) => {
       const entries = await fs.readdir(dir, { withFileTypes: true })
       for (const e of entries) {
         if (e.name === '.trash') continue
@@ -426,7 +426,7 @@ ipcMain.handle('buildExportHtml', async (_event, { bodyHtml, darkMode }: { bodyH
 })
 
 ipcMain.handle('getDefaultSaveDir', async () => {
-  const dir = path.join(app.getPath('documents'), 'Sycamore笔记')
+  const dir = path.join(app.getPath('documents'), 'Sycamore Note')
   addAllowedDir(dir)
   return dir
 })
@@ -446,7 +446,7 @@ ipcMain.handle('exportPdfToPath', async (_event, { filePath, html, darkMode }: {
     return filePath
   } finally {
     pdfWindow.destroy()
-    try { await fs.unlink(tempFile) } catch {}
+    try { await fs.unlink(tempFile) } catch { /* ignore */ }
   }
 })
 
