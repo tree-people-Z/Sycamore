@@ -1,7 +1,7 @@
 {
   "name": "sycamore",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "dist-electron/main.js",
   "scripts": {
     "start": "concurrently -k \"vite\" \"electron .\"",
@@ -35,7 +35,7 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build-assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,

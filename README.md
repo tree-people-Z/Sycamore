@@ -1,332 +1,381 @@
-<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004611" src="https://github.com/user-attachments/assets/c4a65289-88fa-46ea-a70e-9ed5a5954db6" />
-<img width="1920" height="1050" alt="屏幕截图 2026-05-23 004628" src="https://github.com/user-attachments/assets/2fd075d5-3f4a-4119-bba1-4f755c7dc29d" />
-<img width="1920" height="1050" alt="屏幕截图 2026-05-23 005544" src="https://github.com/user-attachments/assets/426ff2b8-8f89-44bc-a858-e31eb6742451" />
+<div align="center">
 
-# Sycamore
+<a href="https://github.com/tree-people-Z/Sycamore#readme">
+  <svg width="80" height="80" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#c4956a"/>
+        <stop offset="100%" stop-color="#7a9e6b"/>
+      </linearGradient>
+    </defs>
+    <rect width="256" height="256" rx="56" fill="url(#logoGrad)"/>
+    <g transform="translate(128,128) scale(6.5) translate(-11.5,-11.5)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 20A7 7 0 0 1 9.8 6.9C15.5 4.9 17 3.5 19 2c1 2 2 4.5 2 8 0 5.5-4.78 10-10 10Z"/>
+      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+    </g>
+  </svg>
+</a>
 
-一个基于 Electron + React + Tiptap 的现代化桌面富文本编辑器，提供流畅的所见即所得编辑体验，集成 AI 对话、图表绘制等功能。
+# **Sycamore**
 
----
+**桌面富文本 & Markdown 编辑器** · Electron + React + Tiptap
 
-## 功能特性
+[![Version](https://img.shields.io/github/v/release/tree-people-Z/Sycamore?style=flat-square&label=版本&color=c4956a)](https://github.com/tree-people-Z/Sycamore/releases)
+[![License](https://img.shields.io/badge/许可证-MIT-7a9e6b?style=flat-square)](LICENSE)
+[![Electron](https://img.shields.io/badge/Electron-33-47848f?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Platform](https://img.shields.io/badge/平台-Windows-0078D6?style=flat-square&logo=windows&logoColor=white)](https://github.com/tree-people-Z/Sycamore/releases)
+[![Stars](https://img.shields.io/github/stars/tree-people-Z/Sycamore?style=flat-square&label=Stars&color=ffd700)](https://github.com/tree-people-Z/Sycamore)
 
-### 富文本编辑
-- 基于 Tiptap (ProseMirror) 的完整所见即所得编辑体验
-- 支持 Markdown 快捷输入（`#` 标题、`-` 列表、`>` 引用、`[]` 任务列表等）
-- 选中文本时弹出浮动工具栏，快速进行格式化
-- 输入 `/` 唤出斜杠菜单，快速插入标题、代码块、表格、公式等
-- Wiki 链接语法 `[[页面名称]]`
-- 编辑区域实时高亮当前编辑位置
-
-### AI 助手
-- 集成 OpenAI 兼容 API 的内联 AI 聊天面板
-- 支持多种 AI 提供商：
-  - **OpenAI** — GPT-4o、GPT-4o-mini 等
-  - **DeepSeek** — DeepSeek Chat / Reasoner
-  - **OpenRouter** — 聚合多模型（Claude、Gemini、Llama 等）
-  - **Groq** — Llama、Mixtral 等高速推理
-  - **智谱 GLM**、**阿里百炼**、**硅基流动**、**月之暗面**
-  - **Ollama** — 本地部署模型
-  - 自定义 API 端点，兼容任何 OpenAI 格式的 API
-- 基于 Token 计数器的上下文窗口管理（128K 上下文限制）
-- 对话历史自动摘要压缩，节省上下文空间
-- 快速操作：润色、续写、总结、翻译、简化
-- 选中文字后直接发送给 AI 处理
-
-### 图表与公式
-- **Mermaid 图表** — 在编辑器中直接插入和编辑 Mermaid 流程图、时序图、类图、状态图、ER 图、甘特图、饼图、旅程图
-- **图表对话框** — 通过 ChartDialog 插入预设模板的 Mermaid 图表，实时预览
-- **LaTeX 公式** — 内联 `$...$` 和块级 `$$...$$` 数学公式渲染（基于 KaTeX）
-
-### 表格
-- 插入和编辑富文本表格
-- 支持合并单元格、调整列宽
-- 表格内文本格式化
-
-### 代码
-- 基于 lowlight 的语法高亮，支持 190+ 种编程语言
-- 代码块显示语言标签
-- 行内代码格式化
-
-### 文件管理
-- 侧边栏文件浏览器，支持树形和列表两种视图
-- 关联本地文件夹，快速浏览 `.json` 和 `.md` 文件
-- 新建、打开、保存、另存为笔记
-- 文件重命名、删除（移到回收站）、恢复
-- 在文件管理器中打开文件所在位置
-- 批量导入 Markdown 文件
-- 搜索文件和笔记内容
-
-### 导出与导入
-- **导出 HTML** — 导出为完整 HTML 文档
-- **导出 Markdown** — 导出为 `.md` 文件
-- **导出 PDF** — 通过 Electron 打印为 PDF
-- **导入 Markdown** — 导入 `.md` 文件并转换到编辑器格式
-- **批量导入 Markdown** — 批量导入文件夹中的 Markdown 文件
-
-### 文本格式化
-- **内联样式** — 加粗、斜体、下划线、删除线、高亮、行内代码、链接
-- **颜色** — 自定义文字颜色（12 种预设颜色）
-- **对齐** — 左对齐、居中、右对齐
-- **块级样式** — 标题（H1-H6）、引用、有序/无序列表、任务列表、分割线
-
-### 主题
-- **亮色** — 浅色干净界面
-- **暗色** — 深色护眼界面
-- **Sycamore（默认）** — 暖色调复古风格界面
-
-### 写作体验
-- **专注模式** — 隐藏工具栏和状态栏，当前段落高亮，其他内容淡化
-- **编辑器宽度** — 窄/宽两种编辑宽度切换
-- **自动保存** — 可配置的自动保存间隔（5s / 15s / 30s / 60s）
-- **词数统计** — 状态栏显示文档字数
-- **未保存提示** — 关闭前检测未保存更改，提供保存/放弃/取消选项
-- **自定义字体大小** — 12px 到 28px 可调
-- **自动换行** — 可开关
-
-### 设置
-- **排版** — 字体大小、编辑器宽度、自动换行
-- **保存** — 自动保存开关和间隔
-- **快捷键** — 可自定义的键盘快捷键（支持所有常用操作）
-- **AI** — API 提供商选择、API Key 管理、模型名称、高级参数（Max Tokens / Temperature）
-- **关于** — 版本信息、GitHub 链接
-
-### 键盘快捷键
-
-| 操作 | 快捷键 |
-|------|--------|
-| 新建文件 | `⌘N` |
-| 打开文件 | `⌘O` |
-| 保存 | `⌘S` |
-| 另存为 | `⌘⇧S` |
-| 撤销 | `⌘Z` |
-| 重做 | `⌘⇧Z` |
-| 加粗 | `⌘B` |
-| 斜体 | `⌘I` |
-| 删除线 | `⌘⇧X` |
-| 高亮 | `⌘⇧H` |
-| 行内代码 | `⌘E` |
-| 链接 | `⌘K` |
-| 导出 HTML | `⌘⇧H` |
-| 导出 Markdown | `⌘⇧M` |
-| 导入 Markdown | `⌘⇧I` |
-| 导出 PDF | `⌘⇧P` |
-
-*快捷键可在设置中自定义。*
+</div>
 
 ---
 
-## 技术栈
+<details open>
+<summary><strong>📑 目录</strong></summary>
 
-- **框架**: Electron 33 + React 18 + TypeScript 5
-- **编辑器**: Tiptap 3 (ProseMirror)
-- **构建**: Vite 5 + vite-plugin-electron
-- **样式**: Tailwind CSS 3 + PostCSS
-- **图标**: Lucide React
-- **AI**: OpenAI 兼容 API（自定义端点，支持 OpenRouter 等多提供商）
-- **图表**: Mermaid 11
-- **公式**: KaTeX 0.16
-- **代码高亮**: lowlight (highlight.js)
-- **Markdown**: marked + Turndown
-- **打包**: electron-builder (NSIS)
+- [✨ 功能介绍](#-功能介绍)
+- [📸 截图](#-截图)
+- [📦 安装指南](#-安装指南)
+- [🚀 快速上手](#-快速上手)
+- [🔧 配置](#-配置)
+- [⌨️ 快捷键](#-快捷键)
+- [🏗️ 项目结构](#️-项目结构)
+- [🤝 贡献指南](#-贡献指南)
+- [📄 许可证](#-许可证)
 
----
-
-## 项目结构
-
-```
-Sycamore/
-├── build-assets/           # 应用图标
-│   ├── icon.svg
-│   └── icon.ico
-├── electron/               # Electron 主进程
-│   ├── main.ts             # 主进程入口（窗口管理、IPC、文件操作）
-│   ├── preload.ts          # 预加载脚本（contextBridge API）
-│   └── export-template.ts  # HTML 导出模板
-├── scripts/
-│   └── generate-icon.cjs   # 图标生成脚本
-├── src/
-│   ├── components/         # React 组件
-│   │   ├── AiChatPanel.tsx      # AI 聊天面板
-│   │   ├── AiProviderDropdown   # AI 提供商下拉框
-│   │   ├── ChartDialog.tsx      # 图表插入对话框
-│   │   ├── ColorPicker.tsx      # 颜色选择器
-│   │   ├── ContextMenu.tsx      # 右键菜单
-│   │   ├── Dialogs.tsx          # 对话框管理器
-│   │   ├── ErrorBoundary.tsx    # 错误边界
-│   │   ├── FormulaDialog.tsx    # 公式插入对话框
-│   │   ├── ImageInputDialog.tsx # 图片 URL 输入对话框
-│   │   ├── SelectionToolbar.tsx # 浮动格式工具栏
-│   │   ├── SettingsPanel.tsx    # 设置面板
-│   │   ├── Sidebar.tsx          # 侧边栏文件浏览器
-│   │   ├── StatusBar.tsx        # 状态栏
-│   │   ├── ToastContainer.tsx   # Toast 通知
-│   │   ├── Toolbar.tsx          # 主工具栏
-│   │   ├── UnsavedDialog.tsx    # 未保存提示对话框
-│   │   ├── WelcomePage.tsx      # 欢迎页
-│   │   └── WindowControls.tsx   # 窗口控制按钮
-│   ├── editor/             # 编辑器相关
-│   │   ├── Editor.tsx           # 编辑器主组件
-│   │   ├── MathBlockView.tsx    # 公式块级渲染视图
-│   │   ├── MathInlineView.tsx   # 公式内联渲染视图
-│   │   └── extensions/          # Tiptap 扩展
-│   │       ├── edit-highlight.ts     # 编辑高亮插件
-│   │       ├── image-extension.ts    # 图片节点扩展
-│   │       ├── math-block.ts         # 块级公式扩展
-│   │       ├── math-inline.ts        # 内联公式扩展
-│   │       ├── mermaid-extension.tsx # Mermaid 图表扩展
-│   │       ├── mermaid-shared.ts     # Mermaid 共享模块
-│   │       ├── slash-menu.ts         # 斜杠菜单扩展
-│   │       └── wiki-link.ts          # Wiki 链接扩展
-│   ├── hooks/              # 自定义 React Hooks
-│   │   ├── useAppUIState.ts     # UI 状态管理（useReducer）
-│   │   ├── useAutoSave.ts       # 自动保存
-│   │   ├── useClickOutside.ts   # 点击外部关闭
-│   │   ├── useConversations.ts  # AI 对话管理
-│   │   ├── useDialogs.ts        # 对话框管理
-│   │   ├── useFileActions.ts    # 文件操作（删除/重命名等）
-│   │   ├── useFileSystem.ts     # 文件系统
-│   │   ├── useFocusTrap.ts      # 焦点陷阱
-│   │   ├── useSettings.ts       # 设置管理
-│   │   ├── useTheme.ts          # 主题切换
-│   │   ├── useToast.ts          # Toast 通知管理
-│   │   └── useUnsavedGuard.ts   # 未保存守卫
-│   ├── utils/              # 工具函数
-│   │   ├── condense.ts          # AI 对话压缩
-│   │   ├── editor-styles.ts     # 编辑器样式应用
-│   │   ├── emitter.ts           # 事件发射器
-│   │   ├── images.ts            # 图片处理
-│   │   ├── markdown-convert.ts  # Markdown 转换
-│   │   ├── openai.ts            # OpenAI API 流式请求
-│   │   ├── path.ts              # 路径工具
-│   │   └── token-counter.ts     # Token 计数器
-│   ├── App.tsx             # 应用主组件
-│   ├── constants.ts        # 常量定义
-│   ├── electron-api.ts     # Electron API 类型声明
-│   ├── index.css           # 全局样式
-│   ├── main.tsx            # 应用入口
-│   └── types.ts            # 类型定义
-├── package.json
-├── vite.config.ts
-├── tailwind.config.js
-├── tsconfig.json
-└── README.md
-```
+</details>
 
 ---
 
-## 快速开始
+## ✨ 功能介绍
 
-### 前置要求
+<table>
+<tr>
+<td width="50%">
 
-- Node.js >= 18
-- npm >= 9
+### 📝 富文本编辑
+基于 **Tiptap** (ProseMirror) 的所见即所得编辑体验
+- Markdown 快捷输入
+- 斜杠菜单 `/` 快速插入
+- 浮动工具栏选中即现
+- Wiki 链接 `[[]]`
+- 实时编辑高亮
 
-### 安装
+</td>
+<td width="50%">
+
+### 🤖 AI 助手
+多提供商 AI 聊天面板，辅助写作
+- **OpenAI · DeepSeek · OpenRouter** 等
+- 自定义 API 端点
+- 128K 上下文管理
+- 自动摘要压缩
+- 润色 / 续写 / 总结 / 翻译
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 📊 Mermaid 图表
+编辑器内直接插入 9 种图表类型
+- 流程图、时序图、类图、状态图
+- ER 图、甘特图、饼图、旅程图
+- 实时预览与编辑
+- ChartDialog 模板插入
+
+</td>
+<td>
+
+### 📐 LaTeX 公式
+基于 **KaTeX** 的高质量数学公式渲染
+- 行内公式 `$...$`
+- 块级公式 `$$...$$`
+- 图表对话框实时预览
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 🎨 三主题切换
+- **亮色** — 清爽浅白
+- **暗色** — 护眼深色
+- **Sycamore** — 暖棕复古（默认）
+
+</td>
+<td>
+
+### 📁 文件管理
+- 侧边栏树形/列表浏览
+- 关联本地文件夹
+- 搜索笔记内容
+- 重命名 / 删除（回收站）/ 恢复
+- 批量导入 Markdown
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 🔌 导出与导入
+- **HTML** 导出（含样式）
+- **Markdown** 导出
+- **PDF** 导出
+- Markdown 文件导入
+- 批量导入
+
+</td>
+<td>
+
+### 🧩 强大编辑器
+- **代码高亮** — 190+ 语言
+- **表格** — 可调整列宽
+- **任务列表** — 可勾选
+- **图片 & 链接**
+- **专注模式**
+- **自动保存**
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📸 截图
+
+<img width="1920" height="1050" alt="Sycamore 截图" src="https://github.com/user-attachments/assets/c4a65289-88fa-46ea-a70e-9ed5a5954db6" />
+<img width="1920" height="1050" alt="Sycamore 截图" src="https://github.com/user-attachments/assets/2fd075d5-3f4a-4119-bba1-4f755c7dc29d" />
+<img width="1920" height="1050" alt="Sycamore 截图" src="https://github.com/user-attachments/assets/426ff2b8-8f89-44bc-a858-e31eb6742451" />
+
+---
+
+## 📦 安装指南
+
+<details>
+<summary><strong>前置要求</strong></summary>
+
+- **Node.js** >= 18
+- **npm** >= 9
+
+</details>
+
+<table>
+<tr>
+<th>命令</th>
+<th>说明</th>
+</tr>
+<tr>
+<td>
 
 ```bash
 npm install
 ```
 
-### 开发
-
-启动 Vite 开发服务器（浏览器预览）：
+</td>
+<td>安装依赖</td>
+</tr>
+<tr>
+<td>
 
 ```bash
 npm run dev
 ```
 
-启动 Electron 应用：
+</td>
+<td>启动 Vite 开发服务器（浏览器预览）</td>
+</tr>
+<tr>
+<td>
 
 ```bash
 npm run electron:dev
 ```
 
-或同时启动 Vite + Electron（热重载）：
+</td>
+<td>启动 Electron 应用</td>
+</tr>
+<tr>
+<td>
 
 ```bash
 npm start
 ```
 
-### 构建
+</td>
+<td>同时启动 Vite + Electron（热重载）</td>
+</tr>
+<tr>
+<td>
 
 ```bash
 npm run build
 ```
 
-### 打包
-
-打包为 Windows 安装包（NSIS）：
+</td>
+<td>构建生产版本</td>
+</tr>
+<tr>
+<td>
 
 ```bash
 npm run pack
 ```
 
-生成的可执行文件在 `release/` 目录下。
+</td>
+<td>打包为 Windows 安装包（`release/` 目录）</td>
+</tr>
+</table>
 
 ---
 
-## 使用指南
+## 🚀 快速上手
 
-1. **新建笔记** — 启动应用后点击「新建笔记」或按 `⌘N`
-2. **写作** — 直接在编辑区输入，支持 Markdown 快捷语法
-3. **格式化** — 使用工具栏按钮或选中文本后弹出浮动工具栏
-4. **插入内容** — 输入 `/` 唤出斜杠菜单，插入标题、表格、代码块、公式、图表等
-5. **AI 对话** — 点击工具栏 AI 按钮或选中文字后点击浮动工具栏 AI 图标，在右侧面板使用 AI 助手
-6. **文件管理** — 侧边栏浏览文件，可关联本地文件夹
-7. **主题切换** — 点击工具栏主题按钮，在亮色/暗色/Sycamore 间切换
-8. **专注写作** — 状态栏点击专注模式按钮，隐藏干扰元素
+1. **📄 新建笔记** — 点击「新建笔记」或按 <kbd>⌘N</kbd>
+2. **✍️ 写作** — 直接在编辑区输入，支持 Markdown 语法
+3. **🎨 格式化** — 工具栏按钮或选中文本弹出浮动工具栏
+4. **⚡ 插入内容** — 输入 <kbd>/</kbd> 唤出斜杠菜单
+5. **🤖 AI 对话** — 选中文字 → 浮动工具栏 AI 图标 → 右侧面板
+6. **📁 文件管理** — 侧边栏浏览，可关联本地文件夹
+7. **🎭 主题切换** — 工具栏主题按钮（亮色 → 暗色 → Sycamore）
+8. **🔍 专注模式** — 状态栏切换，隐藏干扰元素
 
 ### AI 配置
 
-1. 打开设置（工具栏右侧齿轮图标）→ **AI** 选项卡
-2. 选择 AI 提供商（OpenAI、DeepSeek、OpenRouter、Ollama 等）
-3. 输入 API Key
-4. 选择/输入模型名称
-5. 点击「检测」验证连接
-6. 可选：调整 Max Tokens 和 Temperature 高级参数
+1. 打开 **设置**（工具栏 ⚙️ 图标）→ **AI** 选项卡
+2. 选择 **AI 提供商**（OpenAI、DeepSeek、OpenRouter 等）
+3. 输入 **API Key**
+4. 输入 **模型名称**
+5. 点 **检测** 验证连接
+6. 可选调整 **Max Tokens** / **Temperature**
 
 ---
 
-## AI 提供商支持
+## 🔧 配置
 
-| 提供商 | 基础 URL | 典型模型 |
+| 提供商 | 基础 URL | 推荐模型 |
 |--------|----------|----------|
-| OpenAI | `https://api.openai.com/v1` | gpt-4o, gpt-4o-mini |
-| DeepSeek | `https://api.deepseek.com` | deepseek-chat, deepseek-reasoner |
-| OpenRouter | `https://openrouter.ai/api/v1` | openai/gpt-4o, anthropic/claude-sonnet-4, google/gemini-2.5-flash |
-| Groq | `https://api.groq.com/openai/v1` | llama-4-scout, mixtral-8x7b |
-| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | glm-4, glm-4v |
-| 阿里百炼 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | qwen-plus, qwen-turbo |
-| 硅基流动 | `https://api.siliconflow.cn/v1` | DeepSeek-V3, Qwen2.5 |
-| 月之暗面 | `https://api.moonshot.cn/v1` | moonshot-v1 |
-| Ollama (本地) | `http://localhost:11434/v1` | qwen2.5, deepseek-r1 |
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-4o`, `gpt-4o-mini` |
+| **DeepSeek** | `https://api.deepseek.com` | `deepseek-chat`, `deepseek-reasoner` |
+| **OpenRouter** | `https://openrouter.ai/api/v1` | `openai/gpt-4o`, `anthropic/claude-sonnet-4` |
+| **Groq** | `https://api.groq.com/openai/v1` | `llama-4-scout`, `mixtral-8x7b` |
+| **智谱 GLM** | `https://open.bigmodel.cn/api/paas/v4` | `glm-4`, `glm-4v` |
+| **阿里百炼** | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus`, `qwen-turbo` |
+| **硅基流动** | `https://api.siliconflow.cn/v1` | `deepseek-ai/DeepSeek-V3` |
+| **月之暗面** | `https://api.moonshot.cn/v1` | `moonshot-v1` |
+| **Ollama** | `http://localhost:11434/v1` | `qwen2.5`, `deepseek-r1` |
 
-也可添加自定义 API 端点（兼容 OpenAI 格式即可）。
-
----
-
-## 配置
-
-应用配置保存在浏览器本地存储中，包括：
-
-- **主题**: `sycamore-theme`（Light / Dark / Sycamore）
-- **设置**: `editor-settings`（字体大小、编辑器宽度、AI 配置等）
-- **关联文件夹**: `editor-linked-folder`
-- **对话历史**: 按文档 Key 存储在 `conversations/` 命名空间下
+> 支持任何兼容 OpenAI 格式的自定义 API 端点。
 
 ---
 
-## 许可证
+## ⌨️ 快捷键
 
-[MIT](LICENSE)
+| 操作 | 快捷键 | 操作 | 快捷键 |
+|------|--------|------|--------|
+| **新建** | <kbd>⌘N</kbd> | **打开** | <kbd>⌘O</kbd> |
+| **保存** | <kbd>⌘S</kbd> | **另存为** | <kbd>⌘⇧S</kbd> |
+| **撤销** | <kbd>⌘Z</kbd> | **重做** | <kbd>⌘⇧Z</kbd> |
+| **加粗** | <kbd>⌘B</kbd> | **斜体** | <kbd>⌘I</kbd> |
+| **删除线** | <kbd>⌘⇧X</kbd> | **高亮** | <kbd>⌘⇧H</kbd> |
+| **代码** | <kbd>⌘E</kbd> | **链接** | <kbd>⌘K</kbd> |
+| **导出 HTML** | <kbd>⌘⇧H</kbd> | **导出 MD** | <kbd>⌘⇧M</kbd> |
+| **导入 MD** | <kbd>⌘⇧I</kbd> | **导出 PDF** | <kbd>⌘⇧P</kbd> |
+
+> 所有快捷键可在 **设置 → 快捷键** 中自定义。
 
 ---
 
-## 致谢
+## 🏗️ 项目结构
 
-- [Tiptap](https://tiptap.dev/) — 编辑器核心
-- [Mermaid](https://mermaid.js.org/) — 图表渲染
-- [KaTeX](https://katex.org/) — 公式渲染
-- [lowlight](https://github.com/wooorm/lowlight) — 代码高亮
-- [Lucide](https://lucide.dev/) — 图标
+<details>
+<summary>展开查看</summary>
+
+```
+Sycamore/
+├── build-assets/              # 应用图标
+│   ├── icon.svg & icon.ico
+├── electron/                  # Electron 主进程
+│   ├── main.ts                # 窗口管理、IPC、文件操作
+│   ├── preload.ts             # contextBridge API
+│   └── export-template.ts     # HTML 导出模板
+├── src/
+│   ├── components/            # React 组件
+│   │   ├── AiChatPanel.tsx    #   AI 聊天面板
+│   │   ├── SettingsPanel.tsx  #   设置面板
+│   │   ├── Toolbar.tsx        #   主工具栏
+│   │   ├── Sidebar.tsx        #   侧边栏
+│   │   ├── WelcomePage.tsx    #   欢迎页
+│   │   └── ...更多
+│   ├── editor/                # 编辑器核心
+│   │   ├── Editor.tsx         #   编辑器主组件
+│   │   ├── extensions/        #   Tiptap 扩展
+│   │   └── MathBlockView.tsx
+│   ├── hooks/                 # React Hooks
+│   │   ├── useTheme.ts
+│   │   ├── useFileSystem.ts
+│   │   └── ...11 个 hook
+│   ├── utils/                 # 工具函数
+│   │   ├── markdown-convert.ts
+│   │   ├── openai.ts
+│   │   └── ...
+│   └── App.tsx                # 应用根组件
+├── package.json
+├── vite.config.ts
+├── tailwind.config.js
+└── tsconfig.json
+```
+
+</details>
+
+---
+
+## 🤝 贡献指南
+
+1. **Fork** 本项目
+2. 创建你的特性分支：`git checkout -b feat/my-feature`
+3. 提交你的改动：`git commit -m 'feat: add something'`
+4. 推送到分支：`git push origin feat/my-feature`
+5. 发起 **Pull Request**
+
+### 开发命令
+
+| 命令 | 功能 |
+|------|------|
+| `npm run dev` | 启动 Vite |
+| `npm run electron:dev` | 启动 Electron |
+| `npm run typecheck` | TypeScript 类型检查 |
+| `npm run lint` | ESLint 代码检查 |
+| `npm run format` | Prettier 格式化 |
+
+---
+
+## 🧰 技术栈
+
+| 类别 | 技术 |
+|------|------|
+| **框架** | Electron 33 + React 18 + TypeScript 5 |
+| **编辑器** | Tiptap 3 (ProseMirror) |
+| **构建** | Vite 5 + vite-plugin-electron |
+| **样式** | Tailwind CSS 3 + PostCSS |
+| **图标** | Lucide React |
+| **AI** | OpenAI 兼容 API（多提供商） |
+| **图表** | Mermaid 11 |
+| **公式** | KaTeX 0.16 |
+| **代码高亮** | lowlight (highlight.js) |
+| **Markdown** | marked + TurndownService |
+| **打包** | electron-builder (NSIS) |
+
+---
+
+## 📄 许可证
+
+[MIT](LICENSE) © [Tree people](https://github.com/tree-people-Z)
+
+---
+
+<div align="center">
+  <sub>用 ❤️ 和 ☕ 打造</sub>
+</div>
