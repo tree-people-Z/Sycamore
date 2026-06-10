@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, ipcMain, shell, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs/promises'
+import https from 'https'
 import { buildExportHtml } from './export-template'
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL
@@ -515,3 +516,53 @@ ipcMain.handle('showFolderPickerDialog', async () => {
   if (fp) addAllowedDir(fp)
   return fp
 })
+
+interface UpdateInfo {
+  hasUpdate: boolean
+  latestVersion: string
+  downloadUrl: string
+  releaseNotes?: string
+}
+
+ipcMain.handle('checkForUpdates', async (): Promise<UpdateInfo> => {
+  const currentVersion = app.getVersion()
+  try {
+    const html = await new Promise<string>((resolve, reject) => {
+      const req = https.get(
+        'https://api.github.com/repos/tree-people-Z/Sycamore/releases/latest',
+        { headers: { 'User-Agent': 'Sycamore-App', Accept: 'application/vnd.github.v3+json' }, timeout: 8000 },
+        (res) => {
+          let data = ''
+          res.on('data', (chunk) => { data += chunk })
+          res.on('end', () => resolve(data))
+        },
+      )
+      req.on('error', reject)
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')) })
+    })
+    const release = JSON.parse(html)
+    const latestVersion = (release.tag_name || release.name || '').replace(/^v/, '')
+    if (!latestVersion) return { hasUpdate: false, latestVersion: currentVersion, downloadUrl: '' }
+    const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
+    return {
+      hasUpdate,
+      latestVersion,
+      downloadUrl: release.html_url || `https://github.com/tree-people-Z/Sycamore/releases/latest`,
+      releaseNotes: release.body?.slice(0, 500),
+    }
+  } catch {
+    return { hasUpdate: false, latestVersion: currentVersion, downloadUrl: '' }
+  }
+})
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number)
+  const pb = b.split('.').map(Number)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0
+    const nb = pb[i] || 0
+    if (na > nb) return 1
+    if (na < nb) return -1
+  }
+  return 0
+}

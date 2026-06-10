@@ -92,6 +92,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showFolderPickerDialog: (): Promise<string | null> =>
     ipcRenderer.invoke('showFolderPickerDialog'),
 
+  checkForUpdates: (): Promise<import('../src/electron-api').UpdateInfo> =>
+    ipcRenderer.invoke('checkForUpdates'),
+
   onMaximizeChange: (callback: (maximized: boolean) => void): (() => void) => {
     const handler = (_event: IpcRendererEvent, maximized: boolean) => callback(maximized)
     ipcRenderer.on('maximize-change', handler)

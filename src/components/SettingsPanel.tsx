@@ -121,6 +121,8 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showCustomUrl, setShowCustomUrl] = useState(false)
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'current' | 'error'>('idle')
+  const [updateInfo, setUpdateInfo] = useState<{ latestVersion: string; downloadUrl: string }>({ latestVersion: '', downloadUrl: '' })
   const [activeTab, setActiveTab] = useState<TabKey>('editor')
   const recordingRef = useRef<ShortcutAction | null>(null)
   const onChangeRef = useRef(onChange)
@@ -174,6 +176,19 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
   const resetAll = () => {
     setLocalSettings(FULL_DEFAULTS); onChange(FULL_DEFAULTS)
   }
+
+  const handleCheckUpdate = useCallback(async () => {
+    setUpdateStatus('checking')
+    const result = await window.electronAPI?.checkForUpdates()
+    if (!result) { setUpdateStatus('error'); return }
+    if (result.hasUpdate) {
+      setUpdateInfo({ latestVersion: result.latestVersion, downloadUrl: result.downloadUrl })
+      setUpdateStatus('available')
+    } else {
+      setUpdateStatus('current')
+      setTimeout(() => setUpdateStatus('idle'), 5000)
+    }
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dialog-overlay">
@@ -441,6 +456,23 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                   </a>
                 </div>
               </div>
+              <button onClick={handleCheckUpdate}
+                className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+                disabled={updateStatus === 'checking'}>
+                {updateStatus === 'checking' ? (
+                  <span className="opacity-60">检测中...</span>
+                ) : updateStatus === 'available' ? (
+                  <a href={updateInfo.downloadUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[var(--color-accent)]" onClick={e => e.stopPropagation()}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    v{updateInfo.latestVersion} 可用 · 下载
+                  </a>
+                ) : updateStatus === 'current' ? (
+                  <span className="text-green-500/80">✓ 已是最新版本</span>
+                ) : (
+                  <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36"/></svg> 检查更新</>
+                )}
+              </button>
             </div>
           </TabPanel>
         </div>

@@ -6,6 +6,13 @@ export interface DirEntry {
   size?: number
 }
 
+export interface UpdateInfo {
+  hasUpdate: boolean
+  latestVersion: string
+  downloadUrl: string
+  releaseNotes?: string
+}
+
 export interface ElectronAPI {
   readDirectory(dirPath: string): Promise<DirEntry[]>
   readDirectoryRecursive(dirPath: string): Promise<Array<DirEntry & { preview?: string }>>
@@ -37,5 +44,6 @@ export interface ElectronAPI {
   showOpenFileDialog(startingPath?: string): Promise<string | null>
   showSaveFileDialog(defaultName?: string, startingPath?: string): Promise<string | null>
   showFolderPickerDialog(): Promise<string | null>
+  checkForUpdates(): Promise<UpdateInfo>
   onMaximizeChange(callback: (maximized: boolean) => void): () => void
 }
