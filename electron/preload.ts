@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (filePath: string): Promise<string> =>
     ipcRenderer.invoke('readFile', filePath),
 
+  getFileStats: (filePath: string): Promise<{ mtime: number; isDirectory: boolean }> =>
+    ipcRenderer.invoke('getFileStats', filePath),
+
   writeFile: (filePath: string, content: string): Promise<void> =>
     ipcRenderer.invoke('writeFile', { filePath, content }),
 
@@ -91,6 +94,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   showFolderPickerDialog: (): Promise<string | null> =>
     ipcRenderer.invoke('showFolderPickerDialog'),
+
+  showImportFileDialog: (): Promise<string[]> =>
+    ipcRenderer.invoke('showImportFileDialog'),
 
   checkForUpdates: (): Promise<import('../src/electron-api').UpdateInfo> =>
     ipcRenderer.invoke('checkForUpdates'),

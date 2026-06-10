@@ -159,10 +159,6 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+Shift+I',
           click: () => mainWindow?.webContents.send('menu-action', 'import-markdown'),
         },
-        {
-          label: '批量导入 Markdown',
-          click: () => mainWindow?.webContents.send('menu-action', 'batch-import-markdown'),
-        },
         { type: 'separator' },
         {
           label: '退出',
@@ -301,6 +297,13 @@ ipcMain.handle('readFile', async (_event, filePath: string) => {
   const safePath = isPathSafe(filePath)
   if (!safePath) throw new Error('Access denied')
   return fs.readFile(safePath, 'utf-8')
+})
+
+ipcMain.handle('getFileStats', async (_event, filePath: string) => {
+  const safePath = isPathSafe(filePath)
+  if (!safePath) throw new Error('Access denied')
+  const stat = await fs.stat(safePath)
+  return { mtime: stat.mtimeMs, isDirectory: stat.isDirectory() }
 })
 
 ipcMain.handle('writeFile', async (_event, { filePath, content }: { filePath: string; content: string }) => {
@@ -515,6 +518,20 @@ ipcMain.handle('showFolderPickerDialog', async () => {
   const fp = result.canceled ? null : result.filePaths[0]
   if (fp) addAllowedDir(fp)
   return fp
+})
+
+ipcMain.handle('showImportFileDialog', async () => {
+  if (!mainWindow) return []
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: '导入 Markdown 文件',
+    filters: [{ name: 'Markdown Files', extensions: ['md'] }],
+    properties: ['openFile', 'openDirectory', 'multiSelections'],
+  })
+  if (result.canceled) return []
+  for (const fp of result.filePaths) {
+    addAllowedDir(path.dirname(fp))
+  }
+  return result.filePaths
 })
 
 interface UpdateInfo {

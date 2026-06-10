@@ -41,6 +41,10 @@ export function useDialogs() {
     return await window.electronAPI?.showFolderPickerDialog() ?? null
   }, [])
 
+  const showImportFileDialog = useCallback(async (): Promise<string[]> => {
+    return await window.electronAPI?.showImportFileDialog() ?? []
+  }, [])
+
   const closeDialog = useCallback((result?: UnsavedResult | null) => {
     const state = dialogRef.current
     if (state && 'resolve' in state) {
@@ -50,5 +54,5 @@ export function useDialogs() {
     setDialogState(null)
   }, [])
 
-  return { dialogState, showUnsavedDialog, showSaveDialog, showOpenDialog, showFolderDialog, closeDialog }
+  return { dialogState, showUnsavedDialog, showSaveDialog, showOpenDialog, showFolderDialog, showImportFileDialog, closeDialog }
 }

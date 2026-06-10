@@ -28,7 +28,6 @@ interface ToolbarProps {
   onExportPdf?: () => void
   onExportMarkdown?: () => void
   onImportMarkdown?: () => void
-  onBatchImportMarkdown?: () => void
   onToggleAiChat?: () => void
   onInsertChart?: () => void
 }
@@ -49,7 +48,6 @@ function Toolbar({
   onExportPdf,
   onExportMarkdown,
   onImportMarkdown,
-  onBatchImportMarkdown,
   onToggleAiChat,
   onInsertChart,
 }: ToolbarProps) {
@@ -197,13 +195,6 @@ function Toolbar({
             >
               <FileUp size={14} className="text-[var(--color-text-secondary)]" />
               <span>导入 Markdown</span>
-            </button>
-            <button
-              onClick={() => { onBatchImportMarkdown?.(); setShowMoreMenu(false) }}
-              className="w-full px-3 py-2 text-xs text-left text-[var(--color-text)] hover:bg-[var(--color-hover)] flex items-center gap-2.5 transition-colors"
-            >
-              <FileUp size={14} className="text-[var(--color-text-secondary)]" />
-              <span>批量导入 Markdown</span>
             </button>
           </div>
         )}

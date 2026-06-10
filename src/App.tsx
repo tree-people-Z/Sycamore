@@ -30,7 +30,7 @@ function App() {
   const editorRef = useRef<EditorHandle>(null)
   const { theme, darkMode, cycleTheme } = useTheme()
   const { settings, handleSettingsChange } = useSettings()
-  const { dialogState, showUnsavedDialog, showSaveDialog, showOpenDialog, showFolderDialog, closeDialog } = useDialogs()
+  const { dialogState, showUnsavedDialog, showSaveDialog, showOpenDialog, showFolderDialog, showImportFileDialog, closeDialog } = useDialogs()
   const {
     folderPath, folderEntries, linkedFolderPath,
     handleLinkFolder, handleUnlinkFolder, handleRefreshFolder,
@@ -122,32 +122,35 @@ function App() {
   }, [showSaveDialog])
 
   const handleImportMarkdown = useCallback(async () => {
-    const editor = editorRef.current
-    if (!editor) return
-    const fp = await showOpenDialog()
-    if (!fp) return
-    if (!/\.md$/i.test(fp)) return
-    const content = await window.electronAPI?.readFile(fp)
-    if (content == null) return
-    setShowWelcome(false)
-    setHasContent(true)
-    await editor.importMarkdown(content)
-    const fileName = extractFileName(fp)
-    editor.setTitle(fileName)
-  }, [showOpenDialog, setShowWelcome])
-
-  const handleBatchImportMarkdown = useCallback(async () => {
-    const fp = await showFolderDialog()
-    if (!fp) return
-    const entries = await window.electronAPI?.readDirectory(fp)
-    if (!entries) return
-    const mdFiles = entries.filter(e => !e.isDirectory && /\.md$/i.test(e.name))
-    if (mdFiles.length === 0) { addToast('所选文件夹中没有 Markdown 文件', 'info'); return }
+    const paths = await showImportFileDialog()
+    if (!paths.length) return
     const baseDir = (linkedFolderPath || '').replace(/\\/g, '/') || await window.electronAPI?.getDefaultSaveDir()
     if (!baseDir) return
     const concurrency = 4
     let count = 0
-    const processBatch = async (batch: typeof mdFiles) => {
+
+    const allFiles: Array<{ name: string; path: string; mtime?: number }> = []
+    for (const p of paths) {
+      const stat = await window.electronAPI?.getFileStats(p)
+      if (!stat) continue
+      if (stat.isDirectory) {
+        const entries = await window.electronAPI?.readDirectory(p)
+        if (!entries) continue
+        for (const e of entries) {
+          if (!e.isDirectory && /\.md$/i.test(e.name)) {
+            allFiles.push({ name: e.name, path: e.path, mtime: e.mtime })
+          }
+        }
+      } else {
+        if (!/\.md$/i.test(p)) continue
+        const name = p.replace(/\\/g, '/').split('/').pop() || ''
+        allFiles.push({ name, path: p, mtime: stat.mtime })
+      }
+    }
+
+    if (allFiles.length === 0) { addToast('未选择 Markdown 文件', 'info'); return }
+
+    const processBatch = async (batch: typeof allFiles) => {
       await Promise.all(batch.map(async (entry) => {
         const content = await window.electronAPI?.readFile(entry.path)
         if (!content) return
@@ -166,12 +169,12 @@ function App() {
         count++
       }))
     }
-    for (let i = 0; i < mdFiles.length; i += concurrency) {
-      await processBatch(mdFiles.slice(i, i + concurrency))
+    for (let i = 0; i < allFiles.length; i += concurrency) {
+      await processBatch(allFiles.slice(i, i + concurrency))
     }
     addToast(`成功导入 ${count} 个文件`, 'success')
     handleRefreshFolder()
-  }, [showFolderDialog, linkedFolderPath, handleRefreshFolder, addToast])
+  }, [showImportFileDialog, linkedFolderPath, handleRefreshFolder, addToast])
 
   const handleSaveCurrent = useCallback(async () => {
     await editorRef.current?.saveFile()
@@ -196,11 +199,10 @@ function App() {
         case 'export-pdf': await handleExportPdf(); break
         case 'export-markdown': await handleExportMarkdown(); break
         case 'import-markdown': await handleImportMarkdown(); break
-        case 'batch-import-markdown': await handleBatchImportMarkdown(); break
       }
     })
     return () => cleanup?.()
-  }, [handleExit, handleExportHtml, handleExportPdf, handleExportMarkdown, handleImportMarkdown, handleBatchImportMarkdown, handleRefreshFolder, setShowWelcome])
+  }, [handleExit, handleExportHtml, handleExportPdf, handleExportMarkdown, handleImportMarkdown, handleRefreshFolder, setShowWelcome])
 
   useEffect(() => {
     if (!settings.autoCheckUpdate) return
@@ -350,7 +352,6 @@ function App() {
         onExportPdf={() => { if (!ui.showWelcome) handleExportPdf() }}
         onExportMarkdown={() => { if (!ui.showWelcome) handleExportMarkdown() }}
         onImportMarkdown={() => handleImportMarkdown()}
-        onBatchImportMarkdown={() => handleBatchImportMarkdown()}
         onToggleAiChat={() => toggleAiChat()}
         onInsertChart={() => { if (!ui.showWelcome) setShowChartDialog(true) }}
       />

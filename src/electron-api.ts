@@ -27,6 +27,7 @@ export interface ElectronAPI {
   renameEntry(oldPath: string, newPath: string): Promise<boolean>
   openInExplorer(targetPath: string): Promise<boolean>
   fileExists(filePath: string): Promise<boolean>
+  getFileStats(filePath: string): Promise<{ mtime: number; isDirectory: boolean }>
   getDefaultSaveDir(): Promise<string>
   buildExportHtml(bodyHtml: string, darkMode: boolean): Promise<string>
   exportPdfToPath(filePath: string, html: string, darkMode: boolean): Promise<string | null>
@@ -44,6 +45,7 @@ export interface ElectronAPI {
   showOpenFileDialog(startingPath?: string): Promise<string | null>
   showSaveFileDialog(defaultName?: string, startingPath?: string): Promise<string | null>
   showFolderPickerDialog(): Promise<string | null>
+  showImportFileDialog(): Promise<string[]>
   checkForUpdates(): Promise<UpdateInfo>
   onMaximizeChange(callback: (maximized: boolean) => void): () => void
 }

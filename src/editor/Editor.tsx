@@ -92,7 +92,6 @@ export interface EditorHandle {
   insertText: (text: string | Record<string, unknown>) => Promise<void>
   getExportHTML: () => string
   exportMarkdown: () => string
-  importMarkdown: (markdown: string) => Promise<void>
   getText: () => string
   replaceSelection: (text: string) => Promise<void>
 }
@@ -368,14 +367,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     },
     getExportHTML: () => editor ? renderMathForExport(editor.getHTML()) : '',
     exportMarkdown: () => editor ? markdownService.turndown(editor.getHTML()) : '',
-    importMarkdown: async (markdown) => {
-      if (!editor) return
-      const html = await marked.parse(markdown)
-      suppressModifiedRef.current = true
-      editor.commands.setContent(html as string)
-      modifiedRef.current = false
-      onModifiedChangeRef.current?.(false)
-    },
     getText: () => editor?.getText() ?? '',
     getSelectedText: () => {
       if (!editor) return ''
