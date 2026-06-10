@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
   autoSave: true,
   autoSaveInterval: 30,
   lineWrapping: true,
+  autoCheckUpdate: true,
   apiBaseUrl: 'https://api.openai.com/v1',
   apiKey: '',
   apiModel: 'gpt-4o-mini',
@@ -39,6 +40,7 @@ export interface EditorSettings {
   autoSave: boolean
   autoSaveInterval: number
   lineWrapping: boolean
+  autoCheckUpdate: boolean
   apiBaseUrl: string
   apiKey: string
   apiModel: string

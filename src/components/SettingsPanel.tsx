@@ -456,6 +456,10 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                   </a>
                 </div>
               </div>
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] mt-3">
+                <span className="text-xs text-[var(--color-text)]">启动时自动检测更新</span>
+                <Toggle value={localSettings.autoCheckUpdate} onChange={v => updateSetting('autoCheckUpdate', v)} />
+              </div>
               <button onClick={handleCheckUpdate}
                 className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
                 disabled={updateStatus === 'checking'}>

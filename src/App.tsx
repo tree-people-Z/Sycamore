@@ -203,12 +203,14 @@ function App() {
   }, [handleExit, handleExportHtml, handleExportPdf, handleExportMarkdown, handleImportMarkdown, handleBatchImportMarkdown, handleRefreshFolder, setShowWelcome])
 
   useEffect(() => {
+    if (!settings.autoCheckUpdate) return
     window.electronAPI?.checkForUpdates().then(result => {
       if (result?.hasUpdate) {
         addToast(`发现新版本 v${result.latestVersion}，可在设置中下载`, 'info', 10000)
       }
     })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.autoCheckUpdate])
 
   useEffect(() => {
     const cleanup = window.electronAPI?.onBeforeClose(beforeClose)
