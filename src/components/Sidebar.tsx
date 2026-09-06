@@ -9,6 +9,7 @@ import ContextMenu from './ContextMenu'
 import { useContextMenuDismiss } from '../hooks/useFileActions'
 import { showInputDialog } from '../utils/input-dialog'
 import { sanitizeFileName } from '../constants'
+import { uniquePath } from '../utils/path'
 
 interface SidebarProps {
   onNew: () => void
@@ -105,7 +106,9 @@ function Sidebar({
     const newName = sanitizeFileName(input)
     if (newName === oldName) return
     const dir = entry.path.replace(/[/\\][^/\\]+$/, '')
-    const newPath = dir + '\\' + newName + (entry.isDirectory ? '' : '.json')
+    // 名字重复时自动加 (1)、(2)… 后缀，与新建笔记的避重规则一致
+    const exists = (p: string) => window.electronAPI?.fileExists(p) ?? Promise.resolve(false)
+    const newPath = await uniquePath(dir + '\\' + newName + (entry.isDirectory ? '' : '.json'), exists)
     if (await window.electronAPI?.renameEntry(entry.path, newPath)) {
       if (currentFilePath === entry.path) setCurrentFilePath(newPath)
       onRefreshFolder?.()

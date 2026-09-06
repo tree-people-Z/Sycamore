@@ -383,15 +383,6 @@ body {
   pointer-events: none;
 }
 
-.wiki-link {
-  color: var(--color-accent);
-  text-decoration: underline;
-  text-decoration-style: dashed;
-  cursor: pointer;
-}
-
-
-
 .task-item input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;

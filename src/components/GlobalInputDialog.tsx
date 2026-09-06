@@ -19,7 +19,11 @@ export default function GlobalInputDialog() {
   }, [])
 
   useEffect(() => {
-    if (req) inputRef.current?.focus()
+    if (req) {
+      inputRef.current?.focus()
+      // 默认值全选，输入直接替换（重命名场景的预期行为）
+      inputRef.current?.select()
+    }
   }, [req])
 
   useEffect(() => {

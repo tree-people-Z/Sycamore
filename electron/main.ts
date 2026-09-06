@@ -410,6 +410,9 @@ ipcMain.handle('renameEntry', async (_event, { oldPath, newPath }: { oldPath: st
   const safeNew = isPathSafe(newPath)
   if (!safeOld || !safeNew) return false
   try {
+    // 目标已存在时拒绝：Mac/Linux 的 fs.rename 会静默覆盖，Windows 会失败
+    const targetExists = await fs.access(safeNew).then(() => true).catch(() => false)
+    if (targetExists) return false
     await fs.rename(safeOld, safeNew)
     return true
   } catch { return false }

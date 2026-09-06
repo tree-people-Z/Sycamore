@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { FileCode, Folder, FolderOpen, ChevronRight, RefreshCw, FolderPlus, FilePlus, Pencil, Trash2, Link2 } from 'lucide-react'
 import type { DirEntry } from '../electron-api'
 import { CODE_FILE_EXTENSIONS } from './ide-language'
+import { uniquePath } from '../utils/path'
 
 interface MenuState {
   x: number
@@ -111,7 +112,10 @@ export default function IdeFileTree({ rootPath, onOpenFile, refreshKey, onChange
       title: '新建文件（含扩展名，如 index.ts）',
       onSubmit: async (name) => {
         const sep = sepOf(dir)
-        await window.electronAPI?.writeFile(dir + sep + name, '')
+        const exists = (p: string) => window.electronAPI?.fileExists(p) ?? Promise.resolve(false)
+        // 名字重复时自动加 (1)、(2)… 后缀，避免覆盖已有文件
+        const fp = await uniquePath(dir + sep + name, exists)
+        await window.electronAPI?.writeFile(fp, '')
         setInputState(null)
         await loadDir(dir)
         onChanged()
@@ -138,7 +142,9 @@ export default function IdeFileTree({ rootPath, onOpenFile, refreshKey, onChange
       defaultValue: entry.name,
       onSubmit: async (name) => {
         if (name !== entry.name) {
-          const newPath = parentDirOf(entry.path) + sepOf(entry.path) + name
+          const exists = (p: string) => window.electronAPI?.fileExists(p) ?? Promise.resolve(false)
+          // 名字重复时自动加 (1)、(2)… 后缀
+          const newPath = await uniquePath(parentDirOf(entry.path) + sepOf(entry.path) + name, exists)
           await window.electronAPI?.renameEntry(entry.path, newPath)
           onFileRenamed?.(entry.path, newPath)
         }

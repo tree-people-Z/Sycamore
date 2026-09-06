@@ -23,7 +23,6 @@ import { MathBlock } from './extensions/math-block'
 import { MermaidDiagram } from './extensions/mermaid-extension'
 import { MathInlineView } from './MathInlineView'
 import { MathBlockView } from './MathBlockView'
-import { WikiLink } from './extensions/wiki-link'
 import { SlashMenu } from './extensions/slash-menu'
 import type { SlashMenuItem } from './extensions/slash-menu'
 import { CustomImage } from './extensions/image-extension'
@@ -213,7 +212,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       CodeBlockLowlight.configure({ lowlight }),
       MathInlineWithView, MathBlockWithView, MermaidDiagram, CustomImage,
-      WikiLink.configure({}),
       TaskList, TaskItem.configure({ nested: true }),
       SlashMenu.configure({ items: slashItems }),
       EditHighlightPlugin,
@@ -587,13 +585,6 @@ markdownService.addRule('mathInline', {
   replacement: (_content, node) => {
     const tex = (node as HTMLElement).getAttribute('data-math-inline') || ''
     return `$${tex}$`
-  },
-})
-markdownService.addRule('wikiLink', {
-  filter: (node) => node.nodeType === 1 && (node as HTMLElement).getAttribute('data-wiki-link') !== null,
-  replacement: (_content, node) => {
-    const name = (node as HTMLElement).getAttribute('data-wiki-link') || ''
-    return `[[${name}]]`
   },
 })
 markdownService.addRule('taskList', {

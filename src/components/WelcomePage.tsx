@@ -4,6 +4,7 @@ import type { FolderEntry } from '../types'
 import ContextMenu from './ContextMenu'
 import { showInputDialog } from '../utils/input-dialog'
 import { sanitizeFileName } from '../constants'
+import { uniquePath } from '../utils/path'
 
 interface WelcomePageProps {
   onNew: () => void
@@ -92,7 +93,9 @@ function WelcomePage({ onNew, onOpenFile, onLinkFolder, linkedFolderPath, folder
     const newName = sanitizeFileName(input)
     if (newName === oldName) return
     const dir = entry.path.replace(/[/\\][^/\\]+$/, '')
-    const newPath = dir + '\\' + newName + '.json'
+    // 名字重复时自动加 (1)、(2)… 后缀，与新建笔记的避重规则一致
+    const exists = (p: string) => window.electronAPI?.fileExists(p) ?? Promise.resolve(false)
+    const newPath = await uniquePath(dir + '\\' + newName + '.json', exists)
     const ok = await window.electronAPI?.renameEntry(entry.path, newPath)
     if (ok) onRefreshFolder?.()
   }, [onRefreshFolder])

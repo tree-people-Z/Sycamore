@@ -17,7 +17,6 @@ import { common, createLowlight } from 'lowlight'
 import { MathInline } from '../editor/extensions/math-inline'
 import { MathBlock } from '../editor/extensions/math-block'
 import { MermaidDiagram } from '../editor/extensions/mermaid-extension'
-import { WikiLink } from '../editor/extensions/wiki-link'
 import { CustomImage } from '../editor/extensions/image-extension'
 import { marked } from 'marked'
 
@@ -33,7 +32,7 @@ const extensions = [
   CodeBlockLowlight.configure({ lowlight }),
   TextStyle, Color,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
-  MathInline, MathBlock, MermaidDiagram, CustomImage, WikiLink,
+  MathInline, MathBlock, MermaidDiagram, CustomImage,
   TaskList, TaskItem.configure({ nested: true }),
 ]
 
