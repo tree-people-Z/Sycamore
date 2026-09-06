@@ -33,6 +33,16 @@
   --heading-h5-size: 18px;
   --heading-h6-size: 16px;
   --table-font-size: 15px;
+
+  /* IDE 语法高亮配色（亮色） */
+  --ide-kw: #a626a4;
+  --ide-str: #50a14f;
+  --ide-num: #986801;
+  --ide-com: #a0a1a7;
+  --ide-fn: #4078f2;
+  --ide-var: #383a42;
+  --ide-type: #c18401;
+  --ide-op: #0184bc;
 }
 
 .dark {
@@ -54,6 +64,16 @@
   --color-danger: #ff3b30;
   --color-warning: #febc2e;
   --color-success: #28c840;
+
+  /* IDE 语法高亮配色（暗色） */
+  --ide-kw: #c678dd;
+  --ide-str: #98c379;
+  --ide-num: #d19a66;
+  --ide-com: #5c6370;
+  --ide-fn: #61afef;
+  --ide-var: #abb2bf;
+  --ide-type: #e5c07b;
+  --ide-op: #56b6c2;
 }
 
 .sycamore-theme {
@@ -75,6 +95,16 @@
   --color-danger: #c0392b;
   --color-warning: #d4a373;
   --color-success: #8bb87d;
+
+  /* IDE 语法高亮配色（梧桐暖棕） */
+  --ide-kw: #a34d2b;
+  --ide-str: #6f8f5f;
+  --ide-num: #b8863b;
+  --ide-com: #b8a58a;
+  --ide-fn: #47698c;
+  --ide-var: #3d2e1e;
+  --ide-type: #96702d;
+  --ide-op: #7a6a55;
 }
 
 * {

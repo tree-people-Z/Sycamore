@@ -1,7 +1,7 @@
 import { useState, useRef, memo } from 'react'
 import {
   FilePlus, Save, FolderOpen, Moon, Sun, Leaf,
-  Bold, Italic, Strikethrough, Underline, Code, Link2,
+  Bold, Italic, Strikethrough, Underline, Code, Code2, Link2,
   Type, Quote, List, ListOrdered,
   Table, Image, Minus, FileCode, Undo2, Redo2,
   Sigma, MoreHorizontal, Settings, Home, BarChart3,
@@ -30,6 +30,8 @@ interface ToolbarProps {
   onImportMarkdown?: () => void
   onToggleAiChat?: () => void
   onInsertChart?: () => void
+  ideMode?: boolean
+  onToggleIdeMode?: () => void
 }
 
 function Toolbar({
@@ -50,6 +52,8 @@ function Toolbar({
   onImportMarkdown,
   onToggleAiChat,
   onInsertChart,
+  ideMode,
+  onToggleIdeMode,
 }: ToolbarProps) {
   const [showHeading, setShowHeading] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -64,26 +68,45 @@ function Toolbar({
 
   return (
     <div className="h-10 bg-[var(--color-bg)] border-b border-[var(--color-border)] flex items-center px-2.5 gap-0.5 select-none flex-shrink-0 relative">
-      {/* Home */}
-      {onHome && (
+      {/* Home —— 仅笔记模式 */}
+      {!ideMode && onHome && (
         <button onClick={onHome} className={btn} title="主页" aria-label="主页">
           <Home size={15} />
         </button>
       )}
 
       {/* File operations */}
-      <button onClick={onNew} className={btn} title="新建 (⌘N)" aria-label="新建"><FilePlus size={15} /></button>
+      {!ideMode && <button onClick={onNew} className={btn} title="新建 (⌘N)" aria-label="新建"><FilePlus size={15} /></button>}
       <button onClick={onSave} className={btn} title="保存 (⌘S)" aria-label="保存"><Save size={15} /></button>
 
-      <div className={separator} />
-
-      {/* Sidebar toggle */}
-      {onToggleSidebar && (
-        <button onClick={onToggleSidebar} className={btn} title="浏览文件" aria-label="浏览文件" data-sidebar-toggle="true">
-          <FolderOpen size={15} />
-        </button>
+      {/* Sidebar toggle —— 仅笔记模式 */}
+      {!ideMode && onToggleSidebar && (
+        <>
+          <div className={separator} />
+          <button onClick={onToggleSidebar} className={btn} title="浏览文件" aria-label="浏览文件" data-sidebar-toggle="true">
+            <FolderOpen size={15} />
+          </button>
+        </>
       )}
 
+      {/* IDE 模式切换 */}
+      {onToggleIdeMode && (
+        <>
+          <div className={separator} />
+          <button onClick={onToggleIdeMode}
+            className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors text-xs ${
+              ideMode
+                ? 'bg-[var(--color-accent-10)] text-[var(--color-accent)]'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-hover)]'
+            }`}
+            title="IDE 模式" aria-label="IDE 模式">
+            <Code2 size={15} />
+          </button>
+        </>
+      )}
+
+      {/* 富文本编辑按钮 —— 仅笔记模式显示，IDE 模式下隐藏 */}
+      {!ideMode && (<>
       <div className={separator} />
 
       {/* Undo / Redo */}
@@ -199,6 +222,7 @@ function Toolbar({
           </div>
         )}
       </div>
+      </>)}
 
       <div className="flex-1" />
 

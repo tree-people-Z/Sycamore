@@ -13,8 +13,13 @@ export interface UpdateInfo {
   releaseNotes?: string
 }
 
+export interface FileFilter {
+  name: string
+  extensions: string[]
+}
+
 export interface ElectronAPI {
-  readDirectory(dirPath: string): Promise<DirEntry[]>
+  readDirectory(dirPath: string, extensions?: string[]): Promise<DirEntry[]>
   readDirectoryRecursive(dirPath: string): Promise<Array<DirEntry & { preview?: string }>>
   readFile(filePath: string): Promise<string>
   writeFile(filePath: string, content: string): Promise<void>
@@ -42,8 +47,8 @@ export interface ElectronAPI {
   windowMaximize(): Promise<void>
   windowClose(): Promise<void>
   windowIsMaximized(): Promise<boolean>
-  showOpenFileDialog(startingPath?: string): Promise<string | null>
-  showSaveFileDialog(defaultName?: string, startingPath?: string): Promise<string | null>
+  showOpenFileDialog(startingPath?: string, filters?: FileFilter[]): Promise<string | null>
+  showSaveFileDialog(defaultName?: string, startingPath?: string, filters?: FileFilter[]): Promise<string | null>
   showFolderPickerDialog(): Promise<string | null>
   showImportFileDialog(): Promise<string[]>
   checkForUpdates(): Promise<UpdateInfo>

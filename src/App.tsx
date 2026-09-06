@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Leaf } from 'lucide-react'
 import Editor, { type EditorHandle } from './editor/Editor'
+import IDEWorkspace from './ide/IDEWorkspace'
+import type { IdeWorkspaceHandle } from './ide/IDEWorkspace'
 import WindowControls from './components/WindowControls'
 import WelcomePage from './components/WelcomePage'
 import Toolbar from './components/Toolbar'
@@ -23,7 +25,7 @@ import { useAppUIState } from './hooks/useAppUIState'
 import type { InlineFormatType, BlockFormatType } from './types'
 import { convertMarkdownToJSON } from './utils/markdown-convert'
 import { extractFileName } from './utils/path'
-import { on } from './utils/emitter'
+import { on, emit } from './utils/emitter'
 
 function App() {
   const { toasts, addToast, removeToast } = useToast()
@@ -38,6 +40,7 @@ function App() {
 
   const {
     ui,
+    setViewMode,
     setShowWelcome, setSidebarVisible, setSidebarPinned,
     toggleFocusMode, toggleEditorWide, toggleAiChat, openAiChat,
     setShowSettings, setShowFormulaDialog, setShowChartDialog,
@@ -49,11 +52,23 @@ function App() {
   const [wordCount, setWordCount] = useState(0)
   const [lineCount, setLineCount] = useState(0)
   const [hasContent, setHasContent] = useState(false)
+  const [ideSelectedText, setIdeSelectedText] = useState('')
+  const [ideDocPath, setIdeDocPath] = useState<string | null>(null)
+  const ideRef = useRef<IdeWorkspaceHandle>(null)
   const sidebarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const viewModeRef = useRef(ui.viewMode)
+  viewModeRef.current = ui.viewMode
 
   const confirmUnsaved = useUnsavedGuard(
     () => editorRef.current?.getModified() ?? false,
     () => editorRef.current?.saveFile() ?? Promise.resolve(),
+    showUnsavedDialog,
+  )
+
+  // IDE 未保存文件的独立守卫（退出/关窗时与笔记守卫串联）
+  const confirmIdeUnsaved = useUnsavedGuard(
+    () => ideRef.current?.hasDirty() ?? false,
+    () => ideRef.current?.saveAll() ?? Promise.resolve(),
     showUnsavedDialog,
   )
 
@@ -86,12 +101,17 @@ function App() {
   }, [ui.sidebarPinned, setSidebarPinned, setSidebarVisible])
 
   const handleExit = useCallback(async () => {
-    if (await confirmUnsaved()) await window.electronAPI?.quitApp()
-  }, [confirmUnsaved])
+    // 两个编辑器的未保存内容都要确认
+    if (await confirmUnsaved()) {
+      if (await confirmIdeUnsaved()) await window.electronAPI?.quitApp()
+    }
+  }, [confirmUnsaved, confirmIdeUnsaved])
 
   const beforeClose = useCallback(async () => {
-    if (await confirmUnsaved()) window.electronAPI?.closeConfirmed()
-  }, [confirmUnsaved])
+    if (await confirmUnsaved()) {
+      if (await confirmIdeUnsaved()) window.electronAPI?.closeConfirmed()
+    }
+  }, [confirmUnsaved, confirmIdeUnsaved])
 
   const handleExportHtml = useCallback(async () => {
     const editor = editorRef.current
@@ -182,6 +202,12 @@ function App() {
 
   useEffect(() => {
     const cleanup = window.electronAPI?.onMenuAction(async (action) => {
+      // IDE 模式下菜单快捷键让路：保存转发给 IDE，其余编辑类操作忽略
+      if (viewModeRef.current === 'ide') {
+        if (action === 'save') emit('ide-save')
+        else if (action === 'exit') await handleExit()
+        return
+      }
       const editor = editorRef.current
       if (!editor) return
       switch (action) {
@@ -318,6 +344,7 @@ function App() {
   }, [ui.sidebarPinned, setSidebarVisible])
 
   const handleToggleSidebar = useCallback(async () => {
+    if (viewModeRef.current === 'ide') return
     if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current)
     if (ui.sidebarVisible) { setSidebarVisible(false); setSidebarPinned(false); return }
     if (linkedFolderPath) await handleRefreshFolder()
@@ -340,38 +367,49 @@ function App() {
       </div>
 
       <Toolbar
-        theme={theme} onNew={handleNew}
-        onSave={() => { if (!ui.showWelcome) handleSave() }}
+        theme={theme} onNew={() => { if (ui.viewMode === 'note') handleNew() }}
+        onSave={() => {
+          if (ui.viewMode === 'ide') emit('ide-save')
+          else if (!ui.showWelcome) handleSave()
+        }}
         onToggleTheme={cycleTheme} onSettings={() => setShowSettings(true)}
-        onHome={handleHome} onToggleSidebar={handleToggleSidebar}
-        onFormat={(type, url) => { if (!ui.showWelcome) handleFormat(type, url) }}
-        onBlock={(type) => { if (!ui.showWelcome) handleBlock(type) }}
-        onUndo={() => { if (!ui.showWelcome) editorRef.current?.undo() }}
-        onRedo={() => { if (!ui.showWelcome) editorRef.current?.redo() }}
-        onExportHtml={() => { if (!ui.showWelcome) handleExportHtml() }}
-        onExportPdf={() => { if (!ui.showWelcome) handleExportPdf() }}
-        onExportMarkdown={() => { if (!ui.showWelcome) handleExportMarkdown() }}
+        onHome={() => { if (ui.viewMode === 'note') handleHome() }} onToggleSidebar={handleToggleSidebar}
+        ideMode={ui.viewMode === 'ide'}
+        onToggleIdeMode={() => {
+          const next = ui.viewMode === 'ide' ? 'note' : 'ide'
+          setViewMode(next)
+          if (next === 'ide') { setSidebarVisible(false); setSidebarPinned(false) }
+        }}
+        onFormat={(type, url) => { if (!ui.showWelcome && ui.viewMode === 'note') handleFormat(type, url) }}
+        onBlock={(type) => { if (!ui.showWelcome && ui.viewMode === 'note') handleBlock(type) }}
+        onUndo={() => { if (!ui.showWelcome && ui.viewMode === 'note') editorRef.current?.undo() }}
+        onRedo={() => { if (!ui.showWelcome && ui.viewMode === 'note') editorRef.current?.redo() }}
+        onExportHtml={() => { if (!ui.showWelcome && ui.viewMode === 'note') handleExportHtml() }}
+        onExportPdf={() => { if (!ui.showWelcome && ui.viewMode === 'note') handleExportPdf() }}
+        onExportMarkdown={() => { if (!ui.showWelcome && ui.viewMode === 'note') handleExportMarkdown() }}
         onImportMarkdown={() => handleImportMarkdown()}
         onToggleAiChat={() => toggleAiChat()}
-        onInsertChart={() => { if (!ui.showWelcome) setShowChartDialog(true) }}
+        onInsertChart={() => { if (!ui.showWelcome && ui.viewMode === 'note') setShowChartDialog(true) }}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          <Sidebar onNew={handleNew} onOpenFile={handleOpenFile}
-            folderPath={folderPath} folderEntries={folderEntries}
-            onLinkFolder={handleLinkFolder} onUnlinkFolder={handleUnlinkFolder}
-            linkedFolderPath={linkedFolderPath} isVisible={ui.sidebarVisible}
-            onMouseEnter={handleSidebarMouseEnter} onMouseLeave={handleSidebarMouseLeave}
-            onRefreshFolder={handleRefreshFolder} onClose={() => setSidebarVisible(false)} />
-
-          {ui.showWelcome && (
+          {/* IDE 模式下不渲染笔记侧边栏：悬停自动弹出与 IDE 文件树相互干扰 */}
+          {ui.viewMode === 'note' && (
+            <Sidebar onNew={handleNew} onOpenFile={handleOpenFile}
+              folderPath={folderPath} folderEntries={folderEntries}
+              onLinkFolder={handleLinkFolder} onUnlinkFolder={handleUnlinkFolder}
+              linkedFolderPath={linkedFolderPath} isVisible={ui.sidebarVisible}
+              onMouseEnter={handleSidebarMouseEnter} onMouseLeave={handleSidebarMouseLeave}
+              onRefreshFolder={handleRefreshFolder} onClose={() => setSidebarVisible(false)} />
+          )}
+          {ui.showWelcome && ui.viewMode === 'note' && (
             <WelcomePage key={ui.welcomeKey} onNew={handleNew} onOpenFile={handleOpenFile}
               onLinkFolder={handleLinkFolder} linkedFolderPath={linkedFolderPath}
               folderEntries={folderEntries} onRefreshFolder={handleRefreshFolder} />
           )}
 
-          <div className={`h-full transition-opacity duration-150 ${ui.showWelcome ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <div className={ui.viewMode === 'ide' ? 'hidden' : `h-full transition-opacity duration-150 ${ui.showWelcome ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
             <Editor ref={editorRef} darkMode={darkMode}
               settings={{ ...settings, editorWidth: ui.editorWide ? 1000 : settings.editorWidth }}
               linkedFolderPath={linkedFolderPath} focusMode={ui.focusMode}
@@ -380,8 +418,14 @@ function App() {
               onShowSaveDialog={showSaveDialog} onShowOpenDialog={showOpenDialog}
               onSaved={handleRefreshFolder}
               onDocChange={(fp) => setDocKey(fp || 'untitled')}
-              aiEditMode={ui.aiChatOpen && ui.selectedText.length > 0}
+              aiEditMode={ui.viewMode === 'note' && ui.aiChatOpen && ui.selectedText.length > 0}
               onSelectionChange={setSelectedText} />
+          </div>
+
+          {/* IDE 模式：保持挂载以保留标签页与未保存内容 */}
+          <div className={ui.viewMode === 'ide' ? 'flex-1 min-h-0' : 'hidden'}>
+            <IDEWorkspace ref={ideRef} linkedFolderPath={linkedFolderPath} onLinkFolder={handleLinkFolder}
+              onSelectionChange={setIdeSelectedText} onActiveFileChange={setIdeDocPath} />
           </div>
           {ui.aiChatOpen && <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/5 to-transparent pointer-events-none z-10" />}
         </div>
@@ -391,11 +435,22 @@ function App() {
         }`}
           style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}>
           <AiChatPanel onClose={() => toggleAiChat()}
-            getDocumentContent={() => editorRef.current?.exportMarkdown?.() ?? editorRef.current?.getText?.() ?? ''}
-            selectedText={ui.selectedText}
-            replaceSelection={(text) => editorRef.current?.replaceSelection?.(text)}
-            settings={settings} docKey={ui.showWelcome ? '__welcome__' : ui.docKey}
-            insertText={(text) => editorRef.current?.insertText(text)} />
+            getDocumentContent={() => ui.viewMode === 'ide'
+              ? (ideRef.current?.getActiveContent() ?? '')
+              : (editorRef.current?.exportMarkdown?.() ?? editorRef.current?.getText?.() ?? '')}
+            selectedText={ui.viewMode === 'ide' ? ideSelectedText : ui.selectedText}
+            replaceSelection={(text) => {
+              if (ui.viewMode === 'ide') ideRef.current?.replaceSelection(text)
+              else editorRef.current?.replaceSelection?.(text)
+            }}
+            settings={settings}
+            docKey={ui.viewMode === 'ide'
+              ? (ideDocPath ? `ide:${ideDocPath}` : '__ide__')
+              : (ui.showWelcome ? '__welcome__' : ui.docKey)}
+            insertText={(text) => {
+              if (ui.viewMode === 'ide') ideRef.current?.insertText(text)
+              else editorRef.current?.insertText(text)
+            }} />
         </div>
       </div>
 

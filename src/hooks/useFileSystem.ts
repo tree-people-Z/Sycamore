@@ -17,7 +17,7 @@ export function useFileSystem(showFolderDialog: () => Promise<string | null>) {
 
   useEffect(() => {
     if (!!linkedFolderPath && !pendingLinkRef.current) {
-      ;(async () => {
+      (async () => {
         const exists = await window.electronAPI?.fileExists(linkedFolderPath)
         if (!exists) {
           pendingLinkRef.current = true

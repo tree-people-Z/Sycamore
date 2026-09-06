@@ -32,10 +32,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          tiptap: ['@tiptap/react', '@tiptap/starter-kit'],
-          mermaid: ['mermaid'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (/[\\/](codemirror|@codemirror|@lezer)[\\/]/.test(id)) return 'codemirror'
+            if (/[\\/](@tiptap|prosemirror)[\\/]/.test(id)) return 'tiptap'
+            if (/[\\/]mermaid[\\/]/.test(id)) return 'mermaid'
+            if (/[\\/](react|react-dom|react-refresh|scheduler)[\\/]/.test(id)) return 'vendor'
+          }
         },
       },
     },

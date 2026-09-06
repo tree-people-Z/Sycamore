@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  readDirectory: (dirPath: string): Promise<Array<import('../src/electron-api').DirEntry>> =>
-    ipcRenderer.invoke('readDirectory', dirPath),
+  readDirectory: (dirPath: string, extensions?: string[]): Promise<Array<import('../src/electron-api').DirEntry>> =>
+    ipcRenderer.invoke('readDirectory', dirPath, extensions),
 
   readDirectoryRecursive: (dirPath: string): Promise<Array<import('../src/electron-api').DirEntry & { preview?: string }>> =>
     ipcRenderer.invoke('readDirectoryRecursive', dirPath),
@@ -86,11 +86,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   windowIsMaximized: (): Promise<boolean> => ipcRenderer.invoke('windowIsMaximized'),
 
-  showOpenFileDialog: (startingPath?: string): Promise<string | null> =>
-    ipcRenderer.invoke('showOpenFileDialog', { startingPath }),
+  showOpenFileDialog: (startingPath?: string, filters?: Array<{ name: string; extensions: string[] }>): Promise<string | null> =>
+    ipcRenderer.invoke('showOpenFileDialog', { startingPath, filters }),
 
-  showSaveFileDialog: (defaultName?: string, startingPath?: string): Promise<string | null> =>
-    ipcRenderer.invoke('showSaveFileDialog', { defaultName, startingPath }),
+  showSaveFileDialog: (defaultName?: string, startingPath?: string, filters?: Array<{ name: string; extensions: string[] }>): Promise<string | null> =>
+    ipcRenderer.invoke('showSaveFileDialog', { defaultName, startingPath, filters }),
 
   showFolderPickerDialog: (): Promise<string | null> =>
     ipcRenderer.invoke('showFolderPickerDialog'),

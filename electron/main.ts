@@ -231,12 +231,19 @@ interface DirEntry {
   size?: number
 }
 
-async function readDirEntries(dirPath: string): Promise<DirEntry[]> {
+async function readDirEntries(dirPath: string, extensions?: string[]): Promise<DirEntry[]> {
   try {
     const dirents = await fs.readdir(dirPath, { withFileTypes: true })
+    const extSet = extensions ? new Set(extensions.map(ext => ext.toLowerCase())) : null
     const entries: DirEntry[] = []
     for (const e of dirents) {
-      if (!e.isDirectory() && !e.name.endsWith('.json') && !e.name.endsWith('.md')) continue
+      if (e.isDirectory()) {
+        // fallthrough
+      } else if (extSet) {
+        if (!extSet.has(path.extname(e.name).toLowerCase().slice(1))) continue
+      } else if (!e.name.endsWith('.json') && !e.name.endsWith('.md')) {
+        continue
+      }
       const fullPath = path.join(dirPath, e.name)
       const entry: DirEntry = { name: e.name, path: fullPath, isDirectory: e.isDirectory() }
       try {
@@ -268,10 +275,10 @@ function extractText(node: ProseMirrorNode | string): string {
   return ''
 }
 
-ipcMain.handle('readDirectory', async (_event, dirPath: string) => {
+ipcMain.handle('readDirectory', async (_event, dirPath: string, extensions?: string[]) => {
   const safePath = isPathSafe(dirPath)
   if (!safePath) return []
-  return readDirEntries(safePath)
+  return readDirEntries(safePath, extensions)
 })
 
 ipcMain.handle('readDirectoryRecursive', async (_event, dirPath: string) => {
@@ -474,10 +481,10 @@ ipcMain.handle('windowClose', () => { mainWindow?.close() })
 
 ipcMain.handle('windowIsMaximized', () => mainWindow?.isMaximized() ?? false)
 
-ipcMain.handle('showOpenFileDialog', async (_event, { startingPath }: { startingPath?: string }) => {
+ipcMain.handle('showOpenFileDialog', async (_event, { startingPath, filters }: { startingPath?: string; filters?: Electron.FileFilter[] }) => {
   const opts: Electron.OpenDialogOptions = {
     title: '打开文件',
-    filters: [{ name: 'Sycamore Files', extensions: ['json', 'md'] }],
+    filters: filters ?? [{ name: 'Sycamore Files', extensions: ['json', 'md'] }],
     properties: ['openFile'],
   }
   if (startingPath) {
@@ -491,10 +498,10 @@ ipcMain.handle('showOpenFileDialog', async (_event, { startingPath }: { starting
   return fp
 })
 
-ipcMain.handle('showSaveFileDialog', async (_event, { defaultName, startingPath }: { defaultName?: string; startingPath?: string }) => {
+ipcMain.handle('showSaveFileDialog', async (_event, { defaultName, startingPath, filters }: { defaultName?: string; startingPath?: string; filters?: Electron.FileFilter[] }) => {
   const opts: Electron.SaveDialogOptions = {
     title: '保存文件',
-    filters: [{ name: 'Sycamore Files', extensions: ['json', 'md', 'html', 'pdf'] }],
+    filters: filters ?? [{ name: 'Sycamore Files', extensions: ['json', 'md', 'html', 'pdf'] }],
   }
   const safeStart = startingPath ? isPathSafe(startingPath) : null
   if (defaultName && safeStart) {

@@ -1,6 +1,9 @@
 import { useReducer, useMemo } from 'react'
 
+export type ViewMode = 'note' | 'ide'
+
 interface UIState {
+  viewMode: ViewMode
   showWelcome: boolean
   sidebarVisible: boolean
   sidebarPinned: boolean
@@ -18,6 +21,7 @@ interface UIState {
 }
 
 type UIAction =
+  | { type: 'setViewMode'; value: ViewMode }
   | { type: 'setShowWelcome'; value: boolean }
   | { type: 'setSidebarVisible'; value: boolean }
   | { type: 'setSidebarPinned'; value: boolean }
@@ -36,6 +40,7 @@ type UIAction =
   | { type: 'openAiChat' }
 
 const initialUIState: UIState = {
+  viewMode: 'note',
   showWelcome: true,
   sidebarVisible: false,
   sidebarPinned: false,
@@ -54,6 +59,7 @@ const initialUIState: UIState = {
 
 function uiReducer(state: UIState, action: UIAction): UIState {
   switch (action.type) {
+    case 'setViewMode': return { ...state, viewMode: action.value }
     case 'setShowWelcome': return { ...state, showWelcome: action.value }
     case 'setSidebarVisible': return { ...state, sidebarVisible: action.value }
     case 'setSidebarPinned': return { ...state, sidebarPinned: action.value }
@@ -77,6 +83,7 @@ export function useAppUIState() {
   const [ui, dispatch] = useReducer(uiReducer, initialUIState)
 
   const actions = useMemo(() => ({
+    setViewMode: (value: ViewMode) => dispatch({ type: 'setViewMode', value }),
     setShowWelcome: (value: boolean) => dispatch({ type: 'setShowWelcome', value }),
     setSidebarVisible: (value: boolean) => dispatch({ type: 'setSidebarVisible', value }),
     setSidebarPinned: (value: boolean) => dispatch({ type: 'setSidebarPinned', value }),
