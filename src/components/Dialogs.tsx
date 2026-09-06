@@ -13,7 +13,12 @@ function Dialogs({ dialogState, onSaveCurrent, onClose }: DialogsProps) {
 
   return (
     <UnsavedDialog
-      onSave={async () => { try { await onSaveCurrent() } catch { /* swallow */ } onClose('save') }}
+      onSave={async () => {
+        // 保存失败时按取消处理，避免把失败当成已保存而丢失内容
+        let ok = false
+        try { ok = (await onSaveCurrent()) ?? false } catch { /* ignore */ }
+        onClose(ok ? 'save' : 'cancel')
+      }}
       onDiscard={() => onClose('discard')}
       onCancel={() => onClose('cancel')}
     />

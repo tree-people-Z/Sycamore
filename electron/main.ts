@@ -8,6 +8,7 @@ const isDev = !!process.env.VITE_DEV_SERVER_URL
 
 let mainWindow: BrowserWindow | null = null
 let closeInProgress = false
+let closeConfirmed = false
 
 const ALLOWED_BASE_DIRS = new Set<string>()
 
@@ -22,10 +23,15 @@ function isPathSafe(targetPath: string): string | null {
   try {
     const resolved = path.resolve(targetPath)
     if (resolved.includes('\0')) return null
+    // 拒绝 UNC（\\server\share）与设备路径（\\.、\??\）
+    if (/^\\\\[.?]/.test(resolved) || resolved.startsWith('\\\\')) return null
+    const caseFold = process.platform === 'win32'
+    const normalized = caseFold ? resolved.toLowerCase() : resolved
     for (const base of ALLOWED_BASE_DIRS) {
-      if (resolved.startsWith(base + path.sep) || resolved === base) return resolved
+      const baseNorm = caseFold ? base.toLowerCase() : base
+      if (normalized === baseNorm || normalized.startsWith(baseNorm + path.sep)) return resolved
     }
-    return resolved
+    return null
   } catch {
     return null
   }
@@ -92,13 +98,18 @@ function createWindow() {
   })
 
   mainWindow.on('close', (e) => {
-    if (!closeInProgress) {
-      closeInProgress = true
+    // 未确认关闭前一律阻止：防止 close 响应期间再次触发 close 绕过未保存守卫
+    if (!closeConfirmed) {
       e.preventDefault()
-      mainWindow?.webContents.send('before-close')
-      setTimeout(() => { closeInProgress = false }, 10000)
+      if (!closeInProgress) {
+        closeInProgress = true
+        mainWindow?.webContents.send('before-close')
+        setTimeout(() => { closeInProgress = false }, 10000)
+      }
     }
   })
+
+  mainWindow.on('closed', () => { mainWindow = null })
 
   mainWindow.on('maximize', () => {
     mainWindow?.webContents.send('maximize-change', true)
@@ -181,21 +192,9 @@ function createMenu() {
           click: () => mainWindow?.webContents.send('menu-action', 'redo'),
         },
         { type: 'separator' },
-        {
-          label: '剪切',
-          accelerator: 'CmdOrCtrl+X',
-          click: () => mainWindow?.webContents.send('menu-action', 'cut'),
-        },
-        {
-          label: '复制',
-          accelerator: 'CmdOrCtrl+C',
-          click: () => mainWindow?.webContents.send('menu-action', 'copy'),
-        },
-        {
-          label: '粘贴',
-          accelerator: 'CmdOrCtrl+V',
-          click: () => mainWindow?.webContents.send('menu-action', 'paste'),
-        },
+        { role: 'cut', label: '剪切' },
+        { role: 'copy', label: '复制' },
+        { role: 'paste', label: '粘贴' },
       ],
     },
     {
@@ -443,6 +442,8 @@ ipcMain.handle('getDefaultSaveDir', async () => {
 })
 
 ipcMain.handle('exportPdfToPath', async (_event, { filePath, html, darkMode }: { filePath: string; html: string; darkMode: boolean }) => {
+  const safePath = isPathSafe(filePath)
+  if (!safePath) throw new Error('Access denied')
   const tempFile = path.join(app.getPath('temp'), `editor-export-${Date.now()}.html`)
   await fs.writeFile(tempFile, buildExportHtml(html, darkMode), 'utf-8')
   const pdfWindow = new BrowserWindow({
@@ -453,7 +454,7 @@ ipcMain.handle('exportPdfToPath', async (_event, { filePath, html, darkMode }: {
     if (!pdfWindow) throw new Error('Failed to create PDF window')
     await pdfWindow.loadFile(tempFile)
     const pdf = await pdfWindow.webContents.printToPDF({ printBackground: true, preferCSSPageSize: true })
-    await fs.writeFile(filePath, pdf)
+    await fs.writeFile(safePath, pdf)
     return filePath
   } finally {
     pdfWindow.destroy()
@@ -467,6 +468,7 @@ ipcMain.on('close-response', () => { closeInProgress = false })
 
 ipcMain.on('close-confirmed', () => {
   closeInProgress = false
+  closeConfirmed = true
   mainWindow?.destroy()
 })
 

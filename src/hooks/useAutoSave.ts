@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 export function useAutoSave(
   enabled: boolean,
   intervalSeconds: number,
-  saveFn: () => Promise<void>,
+  saveFn: () => Promise<void | boolean>,
   getModified: () => boolean,
 ) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)

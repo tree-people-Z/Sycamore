@@ -37,6 +37,7 @@ import { applyEditorStyles } from '../utils/editor-styles'
 import { handleImageFile, insertImage, hasImageItems, getImageFiles } from '../utils/images'
 import { sanitizeFileName } from '../constants'
 import { extractFileName } from '../utils/path'
+import { showInputDialog } from '../utils/input-dialog'
 import katex from 'katex'
 import TurndownService from 'turndown'
 import { marked } from 'marked'
@@ -82,7 +83,7 @@ export interface EditorHandle {
   getFilePath: () => string | null
   newFile: () => Promise<void>
   openFile: () => Promise<void>
-  saveFile: () => Promise<void>
+  saveFile: () => Promise<boolean>
   saveAs: () => Promise<void>
   undo: () => void
   redo: () => void
@@ -192,8 +193,10 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     { title: '数学公式', description: '行内公式', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mathInline', attrs: { tex: '\\frac{a}{b}' } }).run() },
     { title: '图表', description: 'Mermaid 图表', command: ({ editor: ed, range }: CmdArgs) => ed.chain().focus().deleteRange(range).insertContent({ type: 'mermaidDiagram', attrs: { code: 'graph TD\n  A[开始] --> B[结束]' } }).run() },
     { title: '图片', description: '插入图片', command: ({ editor: ed, range }: CmdArgs) => {
-      const url = prompt('输入图片 URL:')
-      if (url) ed.chain().focus().deleteRange(range).setImage({ src: url }).run()
+      showInputDialog('输入图片 URL:').then(url => {
+        if (url) ed.chain().focus().deleteRange(range).setImage({ src: url }).run()
+      })
+      return true
     }},
   ] as SlashMenuItem[]).map(item => ({ ...item, icon: '' })), [])
 
@@ -231,7 +234,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       },
       handleDrop: (_view, event) => {
         const files = event.dataTransfer?.files
-        if (!files || files.length === 0) { event.preventDefault(); return true }
+        if (!files || files.length === 0) return false
         const imageFiles = getImageFiles(files)
         if (imageFiles.length) {
           event.preventDefault()
@@ -239,7 +242,8 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           return true
         }
         for (const file of Array.from(files)) {
-          const fp = (file as File & { path?: string }).path
+          // Electron 32+ 移除了 File.path，必须经 webUtils 获取真实路径
+          const fp = window.electronAPI?.getPathForFile(file)
           if (!fp || !/\.(json|md)$/i.test(fp)) continue
           event.preventDefault()
           ;(async () => {
@@ -314,8 +318,8 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     }
   }, [aiEditMode, editor])
 
-  const commitSave = useCallback(async () => {
-    if (!editor) return
+  const commitSave = useCallback(async (): Promise<boolean> => {
+    if (!editor) return false
     const t = sanitizeFileName(titleRef.current)
     const content = JSON.stringify(editor.getJSON(), null, 2)
     let fp = filePathRef.current
@@ -337,8 +341,8 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         fp = dir + '/' + name
       }
     }
-    if (!fp) return
-      try { await window.electronAPI?.writeFile(fp, content) } catch (e) { console.error('Save failed:', e); return }
+    if (!fp) return false
+      try { await window.electronAPI?.writeFile(fp, content) } catch (e) { console.error('Save failed:', e); return false }
     filePathRef.current = fp
     const savedTitle = extractFileName(fp)
     setTitle(savedTitle)
@@ -347,6 +351,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     onModifiedChangeRef.current?.(false)
     onSavedRef.current?.()
     onDocChangeRef.current?.(fp)
+    return true
   }, [editor, linkedFolderPath])
 
   useAutoSave(
@@ -378,12 +383,9 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       if (!editor) return
       if (await insertMermaidContent(editor, text, true)) return
       const html = await marked.parse(text)
-      const { from, to } = editor.state.selection
-      if (from === to) {
-        editor.commands.setContent(html as string)
-      } else {
-        editor.chain().focus().deleteSelection().insertContent(html as string).run()
-      }
+      // 始终只替换当前选区：选区折叠时 deleteSelection 为空操作，
+      // 不能回退到 setContent（会把整篇文档替换为 AI 输出）
+      editor.chain().focus().deleteSelection().insertContent(html as string).run()
     },
     setTitle: (t: string) => { setTitle(t); titleRef.current = t },
     setFilePath: (filePath: string | null) => {
@@ -430,7 +432,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       modifiedRef.current = false; onModifiedChangeRef.current?.(false)
       onDocChangeRef.current?.(/\.md$/i.test(filePath) ? null : filePath)
     },
-    saveFile: async () => { await commitSave() },
+    saveFile: async () => { return commitSave() },
     saveAs: async () => {
       if (!editor || !onShowSaveDialog) return
       const fp = await onShowSaveDialog(`${sanitizeFileName(titleRef.current)}.json`)
@@ -541,7 +543,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           onHighlight={() => editor.chain().focus().toggleHighlight().run()}
           onColor={(c) => editor.chain().focus().setColor(c).run()}
           onCode={() => editor.chain().focus().toggleCode().run()}
-          onLink={() => { const url = prompt('输入链接 URL:'); if (url) editor.chain().focus().setLink({ href: url }).run() }}
+          onLink={() => { showInputDialog('输入链接 URL:').then(url => { if (url) editor.chain().focus().setLink({ href: url }).run() }) }}
           onClose={() => setSelectionToolbarPos(null)}
           onAi={() => emit('open-ai-chat')}
         />
@@ -594,7 +596,7 @@ markdownService.addRule('wikiLink', {
   },
 })
 markdownService.addRule('taskList', {
-  filter: 'ul',
+  filter: (node) => node.nodeName === 'UL' && (node as HTMLElement).getAttribute('data-type') === 'taskList',
   replacement: (_content, node) => {
     const ul = node as HTMLElement
     if (ul.getAttribute('data-type') !== 'taskList') return ''

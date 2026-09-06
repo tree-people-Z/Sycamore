@@ -31,10 +31,17 @@ const CONTEXT_LIMIT = 128000
 function sanitizeHtml(html: string): string {
   const el = document.createElement('div')
   el.innerHTML = html
-  el.querySelectorAll('script, iframe, object, embed').forEach(n => n.remove())
+  el.querySelectorAll('script, iframe, object, embed, style, form, link, meta, base').forEach(n => n.remove())
   el.querySelectorAll('*').forEach(n => {
     Array.from(n.attributes).forEach(attr => {
-      if (attr.name.startsWith('on')) n.removeAttribute(attr.name)
+      const name = attr.name.toLowerCase()
+      const value = attr.value.trim()
+      // 协议白名单：阻断 javascript:/data:text/html 等危险 URL
+      if (name.startsWith('on') ||
+          ((name === 'href' || name === 'src' || name === 'xlink:href' || name === 'srcdoc') &&
+           !/^(https?:|mailto:|tel:|data:image\/|\/|#)/i.test(value))) {
+        n.removeAttribute(attr.name)
+      }
     })
   })
   return el.innerHTML
@@ -118,7 +125,14 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
         const { svg } = await mermaid.render(id, code)
         el.innerHTML = svg
         el.className = 'mermaid-chat-preview'
-      } catch { el.innerHTML = `<pre class="mermaid-error">${code}</pre>` }
+      } catch {
+        // 用 textContent 注入，避免 AI 内容经 innerHTML 执行
+        el.textContent = ''
+        const pre = document.createElement('pre')
+        pre.className = 'mermaid-error'
+        pre.textContent = code
+        el.appendChild(pre)
+      }
     })
   }, [messages])
 
@@ -423,7 +437,7 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
       <div className="flex-shrink-0 border-t border-[var(--color-border)] p-3 pt-2">
         <div className="flex gap-2">
           <input type="text" value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleSend() } }}
             placeholder={placeholder}
             className="flex-1 h-9 px-3 text-sm bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg outline-none text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:border-[var(--color-accent)] transition-colors" />
           {loading ? (

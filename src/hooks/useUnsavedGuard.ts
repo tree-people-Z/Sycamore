@@ -3,7 +3,7 @@ import type { UnsavedResult } from './useDialogs'
 
 export function useUnsavedGuard(
   getModified: () => boolean,
-  saveFile: () => Promise<void>,
+  saveFile: () => Promise<void | boolean>,
   showUnsavedDialog: () => Promise<UnsavedResult>,
 ) {
   const confirmUnsaved = useCallback(async (): Promise<boolean> => {

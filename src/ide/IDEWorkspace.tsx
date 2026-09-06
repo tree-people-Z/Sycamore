@@ -77,7 +77,7 @@ const IDEWorkspace = forwardRef<IdeWorkspaceHandle, IDEWorkspaceProps>(function 
     if (existing) { setActivePath(filePath); return }
     const content = await window.electronAPI?.readFile(filePath)
     if (content == null) { addToast('无法读取文件', 'error'); return }
-    setTabs(prev => [...prev, { path: filePath, name: extractFileName(filePath), content, savedContent: content }])
+    setTabs(prev => [...prev, { path: filePath, name: extractFileName(filePath, false), content, savedContent: content }])
     setActivePath(filePath)
   }, [addToast])
 
@@ -112,7 +112,7 @@ const IDEWorkspace = forwardRef<IdeWorkspaceHandle, IDEWorkspaceProps>(function 
     }
     setTabs(prev => prev.map(t => {
       const np = remap(t.path)
-      return np === t.path ? t : { ...t, path: np, name: extractFileName(np) }
+      return np === t.path ? t : { ...t, path: np, name: extractFileName(np, false) }
     }))
     if (activePathRef.current) {
       const np = remap(activePathRef.current)

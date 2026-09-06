@@ -7,6 +7,8 @@ import {
 import type { FolderEntry } from '../types'
 import ContextMenu from './ContextMenu'
 import { useContextMenuDismiss } from '../hooks/useFileActions'
+import { showInputDialog } from '../utils/input-dialog'
+import { sanitizeFileName } from '../constants'
 
 interface SidebarProps {
   onNew: () => void
@@ -98,8 +100,10 @@ function Sidebar({
   const handleRename = useCallback(async (entry: FolderEntry) => {
     setContextMenu(null)
     const oldName = entry.name.replace(/\.json$/i, '')
-    const newName = window.prompt('输入新名称：', oldName)
-    if (!newName || newName === oldName) return
+    const input = await showInputDialog('输入新名称：', oldName)
+    if (!input) return
+    const newName = sanitizeFileName(input)
+    if (newName === oldName) return
     const dir = entry.path.replace(/[/\\][^/\\]+$/, '')
     const newPath = dir + '\\' + newName + (entry.isDirectory ? '' : '.json')
     if (await window.electronAPI?.renameEntry(entry.path, newPath)) {

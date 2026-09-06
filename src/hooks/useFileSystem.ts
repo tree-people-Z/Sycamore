@@ -9,6 +9,8 @@ export function useFileSystem(showFolderDialog: () => Promise<string | null>) {
     () => localStorage.getItem(LINKED_FOLDER_KEY),
   )
   const pendingLinkRef = useRef(false)
+  // 用户主动解除关联后，不再自动回连默认目录
+  const unlinkedRef = useRef(false)
 
   const loadFolder = useCallback(async (path: string) => {
     const entries = await window.electronAPI?.readDirectoryRecursive(path)
@@ -16,6 +18,7 @@ export function useFileSystem(showFolderDialog: () => Promise<string | null>) {
   }, [])
 
   useEffect(() => {
+    if (unlinkedRef.current) return
     if (!!linkedFolderPath && !pendingLinkRef.current) {
       (async () => {
         const exists = await window.electronAPI?.fileExists(linkedFolderPath)
@@ -57,6 +60,7 @@ export function useFileSystem(showFolderDialog: () => Promise<string | null>) {
   const handleLinkFolder = useCallback(async () => {
     const result = await showFolderDialog()
     if (result) {
+      unlinkedRef.current = false
       pendingLinkRef.current = true
       localStorage.setItem(LINKED_FOLDER_KEY, result)
       const entries = await loadFolder(result)
@@ -68,6 +72,7 @@ export function useFileSystem(showFolderDialog: () => Promise<string | null>) {
   }, [showFolderDialog, loadFolder])
 
   const handleUnlinkFolder = useCallback(() => {
+    unlinkedRef.current = true
     localStorage.removeItem(LINKED_FOLDER_KEY)
     setLinkedFolderPath(null)
     setFolderPath(null)

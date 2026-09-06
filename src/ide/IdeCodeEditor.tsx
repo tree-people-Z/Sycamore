@@ -82,6 +82,11 @@ const IdeCodeEditor = forwardRef<IdeCodeEditorHandle, IdeCodeEditorProps>(functi
     if (!view) return
     if (fileKey === currentKeyRef.current) return
     if (currentKeyRef.current) statesRef.current.set(currentKeyRef.current, view.state)
+    // 限制缓存数量，关闭的标签状态不会无限驻留内存
+    if (statesRef.current.size > 20) {
+      const oldest = statesRef.current.keys().next().value
+      if (oldest !== undefined && oldest !== fileKey) statesRef.current.delete(oldest)
+    }
     currentKeyRef.current = fileKey
     const restored = statesRef.current.get(fileKey)
     if (restored) {

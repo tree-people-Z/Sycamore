@@ -15,6 +15,7 @@ import ChartDialog from './components/ChartDialog'
 import Dialogs from './components/Dialogs'
 import ImageInputDialog from './components/ImageInputDialog'
 import ToastContainer from './components/ToastContainer'
+import GlobalInputDialog from './components/GlobalInputDialog'
 import { useTheme } from './hooks/useTheme'
 import { useFileSystem } from './hooks/useFileSystem'
 import { useSettings } from './hooks/useSettings'
@@ -26,6 +27,7 @@ import type { InlineFormatType, BlockFormatType } from './types'
 import { convertMarkdownToJSON } from './utils/markdown-convert'
 import { extractFileName } from './utils/path'
 import { on, emit } from './utils/emitter'
+import { showInputDialog } from './utils/input-dialog'
 
 function App() {
   const { toasts, addToast, removeToast } = useToast()
@@ -61,7 +63,7 @@ function App() {
 
   const confirmUnsaved = useUnsavedGuard(
     () => editorRef.current?.getModified() ?? false,
-    () => editorRef.current?.saveFile() ?? Promise.resolve(),
+    () => editorRef.current?.saveFile() ?? Promise.resolve(false),
     showUnsavedDialog,
   )
 
@@ -277,8 +279,9 @@ function App() {
     if (!editor) return
     if (type === 'image') { setImageUrlInput('https://'); setShowImageInput(true); return }
     if (type === 'link' && !url) {
-      const input = prompt('输入链接 URL:')
-      if (input) editor.formatInline('link', input)
+      showInputDialog('输入链接 URL:').then(input => {
+        if (input) editor.formatInline('link', input)
+      })
       return
     }
     editor.formatInline(type, url)
@@ -471,6 +474,8 @@ function App() {
       )}
 
       <Dialogs dialogState={dialogState} onSaveCurrent={handleSaveCurrent} onClose={closeDialog} />
+
+      <GlobalInputDialog />
 
       <StatusBar wordCount={wordCount} lineCount={lineCount} isModified={isModified} hasContent={hasContent}
         focusMode={ui.focusMode} onToggleFocusMode={() => toggleFocusMode()}

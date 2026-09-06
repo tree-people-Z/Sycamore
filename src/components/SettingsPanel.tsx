@@ -373,6 +373,7 @@ function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localSettings.apiKey}` },
                           body: JSON.stringify({ model: localSettings.apiModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+                          signal: AbortSignal.timeout(8000),
                         })
                         setTestStatus(res.ok ? 'success' : 'error')
                       } catch { setTestStatus('error') }

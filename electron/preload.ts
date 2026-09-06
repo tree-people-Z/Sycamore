@@ -1,6 +1,9 @@
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Electron 32+ 已移除 File.path，拖拽文件需经 webUtils 获取真实路径
+  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
+
   readDirectory: (dirPath: string, extensions?: string[]): Promise<Array<import('../src/electron-api').DirEntry>> =>
     ipcRenderer.invoke('readDirectory', dirPath, extensions),
 

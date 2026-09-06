@@ -19,6 +19,7 @@ export interface FileFilter {
 }
 
 export interface ElectronAPI {
+  getPathForFile(file: File): string
   readDirectory(dirPath: string, extensions?: string[]): Promise<DirEntry[]>
   readDirectoryRecursive(dirPath: string): Promise<Array<DirEntry & { preview?: string }>>
   readFile(filePath: string): Promise<string>

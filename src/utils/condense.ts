@@ -60,7 +60,8 @@ export async function condenseMessages(
     const content = messages[idx].content || ''
     try {
       let summary = ''
-      const finalPrompt = prompt.replace('{content}', content)
+      // 用函数形式替换，避免 content 中的 $$、$& 等被当作替换模式改写
+      const finalPrompt = prompt.replace('{content}', () => content)
       const opts = {
         baseUrl: settings.apiBaseUrl,
         apiKey: settings.apiKey,
