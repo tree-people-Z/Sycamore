@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, ipcMain, shell, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs/promises'
+import { readFileSync, writeFileSync } from 'fs'
 import https from 'https'
 import { buildExportHtml } from './export-template'
 
@@ -12,10 +13,23 @@ let closeConfirmed = false
 
 const ALLOWED_BASE_DIRS = new Set<string>()
 
+// 白名单持久化到 userData：重启后此前授权过的目录（对话框选择/默认目录）依然有效
+function whitelistFile(): string {
+  return path.join(app.getPath('userData'), 'allowed-dirs.json')
+}
+
+function loadAllowedDirs() {
+  try {
+    const dirs = JSON.parse(readFileSync(whitelistFile(), 'utf-8')) as string[]
+    for (const d of dirs) { try { ALLOWED_BASE_DIRS.add(path.resolve(d)) } catch { /* ignore */ } }
+  } catch { /* 首次运行无文件 */ }
+}
+
 function addAllowedDir(dirPath: string) {
   try {
     const resolved = path.resolve(dirPath)
     ALLOWED_BASE_DIRS.add(resolved)
+    try { writeFileSync(whitelistFile(), JSON.stringify([...ALLOWED_BASE_DIRS], null, 2)) } catch { /* ignore */ }
   } catch { /* ignore */ }
 }
 
@@ -50,6 +64,9 @@ if (!gotTheLock) {
   })
 
   app.whenReady().then(() => {
+    loadAllowedDirs()
+    // 默认笔记目录由应用管理，启动即加入白名单（关联文件夹即默认目录的场景）
+    addAllowedDir(path.join(app.getPath('documents'), 'Sycamore Note'))
     createMenu()
     createWindow()
 

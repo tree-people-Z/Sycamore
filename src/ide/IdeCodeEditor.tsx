@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
+import { indentWithTab } from '@codemirror/commands'
 import { getLanguageSupport, ideHighlight } from './ide-language'
 
 export interface IdeCodeEditorHandle {
@@ -16,6 +17,36 @@ interface IdeCodeEditorProps {
   onSave: () => void
   onSelectionChange?: (text: string) => void
 }
+
+// Tab 缩进 / Shift+Tab 反缩进（basicSetup 默认不含，Tab 会把焦点移出编辑器）
+const ideTabKeys = keymap.of([indentWithTab])
+
+const ideEditorTheme = EditorView.theme({
+  '&': { height: '100%', backgroundColor: 'transparent', color: 'var(--color-text)', fontSize: '13px' },
+  '.cm-content': {
+    fontFamily: "'SF Mono', Consolas, 'Liberation Mono', 'Courier New', monospace",
+    lineHeight: '1.65',
+    paddingBottom: '40vh',
+  },
+  '.cm-scroller': { overflow: 'auto' },
+  '.cm-gutters': {
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text-tertiary)',
+    border: 'none',
+    borderRight: '1px solid var(--color-border)',
+  },
+  '.cm-activeLine': { backgroundColor: 'var(--color-accent-8)' },
+  '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--color-accent)' },
+  '.cm-selectionBackground': { backgroundColor: 'var(--color-selection) !important' },
+  '.cm-cursor': { borderLeftColor: 'var(--color-text)' },
+  '.cm-tooltip': {
+    backgroundColor: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-text)',
+  },
+  '.cm-searchMatch': { backgroundColor: 'var(--color-accent-10)' },
+  '.cm-searchMatch-selected': { backgroundColor: 'var(--color-selection)' },
+})
 
 /**
  * 单一 EditorView 实例的多文件代码编辑器。
@@ -97,36 +128,12 @@ const IdeCodeEditor = forwardRef<IdeCodeEditorHandle, IdeCodeEditorProps>(functi
       doc: value,
       extensions: [
         basicSetup,
+        ideTabKeys,
         keymap.of([{ key: 'Mod-s', run: () => { onSaveRef.current(); return true } }]),
         listener,
         getLanguageSupport(fileKey),
         ideHighlight,
-        EditorView.theme({
-          '&': { height: '100%', backgroundColor: 'transparent', color: 'var(--color-text)', fontSize: '13px' },
-          '.cm-content': {
-            fontFamily: "'SF Mono', Consolas, 'Liberation Mono', 'Courier New', monospace",
-            lineHeight: '1.65',
-            paddingBottom: '40vh',
-          },
-          '.cm-scroller': { overflow: 'auto' },
-          '.cm-gutters': {
-            backgroundColor: 'var(--color-surface)',
-            color: 'var(--color-text-tertiary)',
-            border: 'none',
-            borderRight: '1px solid var(--color-border)',
-          },
-          '.cm-activeLine': { backgroundColor: 'var(--color-accent-8)' },
-          '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--color-accent)' },
-          '.cm-selectionBackground': { backgroundColor: 'var(--color-selection) !important' },
-          '.cm-cursor': { borderLeftColor: 'var(--color-text)' },
-          '.cm-tooltip': {
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-text)',
-          },
-          '.cm-searchMatch': { backgroundColor: 'var(--color-accent-10)' },
-          '.cm-searchMatch-selected': { backgroundColor: 'var(--color-selection)' },
-        }),
+        ideEditorTheme,
       ],
     }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
