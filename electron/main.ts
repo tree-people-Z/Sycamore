@@ -127,53 +127,59 @@ function createWindow() {
   }
 }
 
+let keybindings: Record<string, string> = {}
+
+// 菜单项不注册 accelerator：菜单加速器会拦截按键使渲染层自定义快捷键失效。
+// 快捷键提示放在 label 的 \t 之后仅作显示，实际拦截在渲染层 keydown 处理。
+function menuAcc(action: string, fallback: string): string {
+  const isMac = process.platform === 'darwin'
+  const binding = keybindings[action] || fallback
+  return `\t${binding.replace('CmdOrCtrl', isMac ? 'Cmd' : 'Ctrl')}`
+}
+
 function createMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
       label: '文件',
       submenu: [
         {
-          label: '新建',
-          accelerator: 'CmdOrCtrl+N',
+          label: `新建${menuAcc('newFile', 'CmdOrCtrl+N')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'new'),
         },
         {
-          label: '打开',
-          accelerator: 'CmdOrCtrl+O',
+          label: `打开${menuAcc('openFile', 'CmdOrCtrl+O')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'open'),
         },
         { type: 'separator' },
         {
-          label: '保存',
-          accelerator: 'CmdOrCtrl+S',
+          label: `保存${menuAcc('save', 'CmdOrCtrl+S')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'save'),
         },
         {
-          label: '另存为',
-          accelerator: 'CmdOrCtrl+Shift+S',
+          label: `另存为${menuAcc('saveAs', 'CmdOrCtrl+Shift+S')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'save-as'),
         },
         { type: 'separator' },
         {
-          label: '导出 HTML',
-          accelerator: 'CmdOrCtrl+Shift+H',
+          label: `导出 HTML${menuAcc('exportHtml', 'CmdOrCtrl+Shift+H')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'export-html'),
         },
         {
+          label: `导出 PDF${menuAcc('exportPdf', 'CmdOrCtrl+Shift+P')}`,
+          click: () => mainWindow?.webContents.send('menu-action', 'export-pdf'),
+        },
+        {
           label: '导出 Markdown',
-          accelerator: 'CmdOrCtrl+Shift+M',
           click: () => mainWindow?.webContents.send('menu-action', 'export-markdown'),
         },
         { type: 'separator' },
         {
           label: '导入 Markdown',
-          accelerator: 'CmdOrCtrl+Shift+I',
           click: () => mainWindow?.webContents.send('menu-action', 'import-markdown'),
         },
         { type: 'separator' },
         {
-          label: '退出',
-          accelerator: 'CmdOrCtrl+Q',
+          label: `退出${menuAcc('exit', 'CmdOrCtrl+Q')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'exit'),
         },
       ],
@@ -182,13 +188,11 @@ function createMenu() {
       label: '编辑',
       submenu: [
         {
-          label: '撤销',
-          accelerator: 'CmdOrCtrl+Z',
+          label: `撤销${menuAcc('undo', 'CmdOrCtrl+Z')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'undo'),
         },
         {
-          label: '重做',
-          accelerator: 'CmdOrCtrl+Shift+Z',
+          label: `重做${menuAcc('redo', 'CmdOrCtrl+Shift+Z')}`,
           click: () => mainWindow?.webContents.send('menu-action', 'redo'),
         },
         { type: 'separator' },
@@ -222,6 +226,12 @@ function createMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
+// 渲染层同步自定义快捷键：仅用于菜单提示文本刷新（实际拦截在渲染层 keydown）
+ipcMain.on('update-keybindings', (_event, kb?: Record<string, string>) => {
+  keybindings = kb || {}
+  createMenu()
+})
+
 interface DirEntry {
   name: string
   path: string
@@ -236,6 +246,8 @@ async function readDirEntries(dirPath: string, extensions?: string[]): Promise<D
     const extSet = extensions ? new Set(extensions.map(ext => ext.toLowerCase())) : null
     const entries: DirEntry[] = []
     for (const e of dirents) {
+      // 回收站目录不作为普通条目展示（由 listTrashItems 专门处理）
+      if (e.name === '.trash') continue
       if (e.isDirectory()) {
         // fallthrough
       } else if (extSet) {
@@ -582,8 +594,10 @@ ipcMain.handle('checkForUpdates', async (): Promise<UpdateInfo> => {
 })
 
 function compareVersions(a: string, b: string): number {
-  const pa = a.split('.').map(Number)
-  const pb = b.split('.').map(Number)
+  // 剥离 v 前缀与 -prerelease 后缀，预发布版不应被当作更新提示
+  const clean = (v: string) => v.trim().replace(/^v/i, '').split('-')[0]
+  const pa = clean(a).split('.').map(Number)
+  const pb = clean(b).split('.').map(Number)
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const na = pa[i] || 0
     const nb = pb[i] || 0

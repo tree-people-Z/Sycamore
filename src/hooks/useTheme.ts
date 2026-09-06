@@ -3,9 +3,13 @@ import { flushSync } from 'react-dom'
 import { THEME_KEY, THEME_CYCLE } from '../constants'
 import type { Theme } from '../constants'
 
+const VALID_THEMES: Theme[] = ['light', 'dark', 'sycamore']
+
 function getInitialTheme(): Theme {
   try {
-    return (localStorage.getItem(THEME_KEY) as Theme) || 'sycamore'
+    const saved = localStorage.getItem(THEME_KEY) as Theme | null
+    // 非法值会让 THEME_CYCLE[prev] 变 undefined，主题切换永久卡死
+    return saved && VALID_THEMES.includes(saved) ? saved : 'sycamore'
   } catch {
     return 'sycamore'
   }

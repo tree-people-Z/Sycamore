@@ -93,6 +93,8 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
   const [editTitleValue, setEditTitleValue] = useState('')
 
   useEffect(() => { activeConvRef.current = activeId }, [activeId])
+  // 切换文档时清空重新生成用的 prompt，避免把上个文档的提问发到当前文档
+  useEffect(() => { lastUserMsgRef.current = '' }, [docKey])
 
   useEffect(() => {
     const conv = getActive()
@@ -197,7 +199,8 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
       setMessages(updatedMessages)
       addMessage(currentConvId, { role: 'user', content: userText })
     } else {
-      updatedMessages = messages
+      // 重新生成：移除旧的 assistant 回答，避免新回答变成追加
+      updatedMessages = messages.slice(0, -1)
     }
 
     updatedMessages = [...updatedMessages, { role: 'assistant', content: '' }]
@@ -208,14 +211,24 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
     abortRef.current = abort
 
     try {
-      const docStr = getDocumentContent().trim()
-      const contextMsg = `当前文档（Markdown）：\n"""\n${docStr || '（空文档）'}\n"""`
-      const selMsg = selText ? `\n用户选中了以下文字：\n"""\n${selText}\n"""` : ''
       const rules = `\n\n【输出铁律】\n\n修改/润色/翻译/改写/续写类请求→只输出最终文本。严禁以下行为：`
         + `\n× 任何前缀说明、分段小标题、\`\`\` 代码块包裹、对比说明、无用后缀`
         + `\n→ 从第一个字到最后一个字，就是可直接拿过去用的纯内容。`
         + `\n\n如果用户要求生成图表，请用 Mermaid 语法输出图表代码，用 \`\`\`mermaid 代码块包裹。`
         + `\n咨询/分析/总结/续写类请求→正常回答，保持简洁。始终使用 Markdown 格式。`
+      let docStr = getDocumentContent().trim()
+      const selMsg = selText ? `\n用户选中了以下文字：\n"""\n${selText}\n"""` : ''
+      // 上下文硬裁剪：估算超限时截断文档（保留头尾），避免请求直接被 API 拒绝
+      const fixedEstimate = estimateTokens(rules) + estimateTokens(selMsg) + estimateTokens(userText)
+        + updatedMessages.reduce((s, m) => s + estimateTokens(m.content), 0)
+      const docBudgetTokens = Math.max(1000, Math.floor(CONTEXT_LIMIT * 0.85) - fixedEstimate)
+      if (estimateTokens(docStr) > docBudgetTokens) {
+        const keepChars = Math.max(2000, docBudgetTokens * 2)
+        docStr = docStr.slice(0, Math.floor(keepChars * 0.7))
+          + '\n\n【文档过长，中间内容已截断】\n\n'
+          + docStr.slice(-Math.floor(keepChars * 0.3))
+      }
+      const contextMsg = `当前文档（Markdown${docStr.includes('【文档过长') ? '，超长已截断' : ''}）：\n"""\n${docStr || '（空文档）'}\n"""`
       const sysMsg = `你工作在 Sycamore 写作软件中。${contextMsg}${selMsg}${rules}`
 
       const activeConv = getActive()
@@ -233,11 +246,14 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
       }, (token) => {
         aiContent += token
         setOutputTokens(estimateTokens(aiContent))
-        setMessages(prev => {
-          const next = [...prev]
-          next[next.length - 1] = { role: 'assistant', content: aiContent }
-          return next
-        })
+        // 生成期间切换会话时不污染新会话的 UI 状态
+        if (activeConvRef.current === currentConvId) {
+          setMessages(prev => {
+            const next = [...prev]
+            next[next.length - 1] = { role: 'assistant', content: aiContent }
+            return next
+          })
+        }
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
         saveTimerRef.current = setTimeout(() => updateLastMessage(currentConvId, aiContent), 500)
       }, abort.signal)
@@ -245,7 +261,9 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
       updateLastMessage(currentConvId, aiContent)
     } catch (e: unknown) {
       if ((e as Error).name !== 'AbortError') {
-        setMessages([...updatedMessages.slice(0, -1), { role: 'assistant', content: '请求失败，请检查 API 设置' }])
+        if (activeConvRef.current === currentConvId) {
+          setMessages([...updatedMessages.slice(0, -1), { role: 'assistant', content: '请求失败，请检查 API 设置' }])
+        }
       }
     }
     setLoading(false)
@@ -266,7 +284,7 @@ function AiChatPanel({ onClose, getDocumentContent, settings, insertText, select
 
   const handleRegenerate = useCallback(() => {
     if (!lastUserMsgRef.current || messages.length < 2) return
-    setMessages(prev => prev.slice(0, -1))
+    // 旧回答的移除在 sendMessage 的 isRetry 分支内处理
     sendMessage(lastUserMsgRef.current, true)
   }, [messages.length, sendMessage])
 

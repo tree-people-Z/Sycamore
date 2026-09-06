@@ -55,3 +55,21 @@ export interface EditorSettings {
 export function sanitizeFileName(title: string): string {
   return title.replace(/[<>:"/\\|?*]/g, '').trim() || '未命名笔记'
 }
+
+/** 快捷键默认值（主菜单与渲染层 keydown 共用的唯一事实来源） */
+export const DEFAULT_KEYBINDINGS: Record<string, string> = {
+  bold: 'CmdOrCtrl+B',
+  italic: 'CmdOrCtrl+I',
+  strikethrough: 'CmdOrCtrl+Shift+X',
+  highlight: 'CmdOrCtrl+Shift+H',
+  code: 'CmdOrCtrl+E',
+  link: 'CmdOrCtrl+K',
+  save: 'CmdOrCtrl+S',
+  newFile: 'CmdOrCtrl+N',
+  openFile: 'CmdOrCtrl+O',
+  saveAs: 'CmdOrCtrl+Shift+S',
+  undo: 'CmdOrCtrl+Z',
+  redo: 'CmdOrCtrl+Shift+Z',
+  exportHtml: 'CmdOrCtrl+Shift+H',
+  exportPdf: 'CmdOrCtrl+Shift+P',
+}

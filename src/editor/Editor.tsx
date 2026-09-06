@@ -444,6 +444,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       setTitle(savedTitle); titleRef.current = savedTitle
       modifiedRef.current = false; onModifiedChangeRef.current?.(false)
       onSavedRef.current?.()
+      onDocChangeRef.current?.(fp)
     },
     undo: () => editor?.chain().focus().undo().run(),
     redo: () => editor?.chain().focus().redo().run(),

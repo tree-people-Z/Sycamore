@@ -109,4 +109,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('maximize-change', handler)
     return () => ipcRenderer.removeListener('maximize-change', handler)
   },
+
+  updateKeybindings: (keybindings?: Record<string, string>): void =>
+    ipcRenderer.send('update-keybindings', keybindings),
 })

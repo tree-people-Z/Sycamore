@@ -39,7 +39,27 @@ function loadConversation(id: string): Conversation | null {
 }
 
 function saveConversation(conv: Conversation) {
-  try { localStorage.setItem(`conversation-${sanitizeId(conv.id)}`, JSON.stringify(conv)) } catch (e) { console.warn('Failed to save conversation:', e) }
+  const key = `conversation-${sanitizeId(conv.id)}`
+  const write = () => localStorage.setItem(key, JSON.stringify(conv))
+  try { write(); return } catch { /* 配额溢出，走清理流程 */ }
+  try {
+    // 清理最旧的会话（跳过当前写入的会话）直到能写回为止，并同步索引
+    const others = Object.keys(localStorage)
+      .filter(k => k.startsWith('conversation-') && k !== key)
+      .map(k => {
+        try { const c = JSON.parse(localStorage.getItem(k) || '{}') as Conversation; return { k, updatedAt: c.updatedAt || 0, id: c.id || '' } }
+        catch { return { k, updatedAt: 0, id: '' } }
+      })
+      .sort((a, b) => a.updatedAt - b.updatedAt)
+    let index = loadIndex()
+    for (const item of others) {
+      localStorage.removeItem(item.k)
+      index = index.filter(e => sanitizeId(e.id) !== item.k.replace('conversation-', ''))
+      saveIndex(index)
+      try { write(); return } catch { /* 继续清理 */ }
+    }
+    write()
+  } catch (e) { console.warn('Failed to save conversation:', e) }
 }
 
 function sanitizeId(id: string) {

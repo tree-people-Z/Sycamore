@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, memo, type ReactNode } from 'react'
 import { X, Type, Maximize, Save, RotateCcw, WrapText, Keyboard, Leaf, Bot, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react'
-import { DEFAULT_SETTINGS } from '../constants'
+import { DEFAULT_KEYBINDINGS, DEFAULT_SETTINGS } from '../constants'
 import type { EditorSettings } from '../constants'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import AiProviderDropdown from './AiProviderDropdown'
@@ -10,21 +10,13 @@ export type ShortcutAction =
   | 'save' | 'newFile' | 'openFile' | 'saveAs' | 'undo' | 'redo'
   | 'exportHtml' | 'exportPdf'
 
-const DEFAULT_KEYBINDINGS: Record<ShortcutAction, string> = {
-  bold: 'CmdOrCtrl+B', italic: 'CmdOrCtrl+I', strikethrough: 'CmdOrCtrl+Shift+X',
-  highlight: 'CmdOrCtrl+Shift+H', code: 'CmdOrCtrl+E', link: 'CmdOrCtrl+K',
-  save: 'CmdOrCtrl+S', newFile: 'CmdOrCtrl+N', openFile: 'CmdOrCtrl+O',
-  saveAs: 'CmdOrCtrl+Shift+S', undo: 'CmdOrCtrl+Z', redo: 'CmdOrCtrl+Shift+Z',
-  exportHtml: 'CmdOrCtrl+Shift+H', exportPdf: 'CmdOrCtrl+Shift+P',
-}
-
 const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
   bold: '加粗', italic: '斜体', strikethrough: '删除线', highlight: '高亮',
   code: '行内代码', link: '链接', save: '保存', newFile: '新建', openFile: '打开',
   saveAs: '另存为', undo: '撤销', redo: '重做', exportHtml: '导出 HTML', exportPdf: '导出 PDF',
 }
 
-const FULL_DEFAULTS: EditorSettings & { keybindings: Record<ShortcutAction, string> } = { ...DEFAULT_SETTINGS, keybindings: { ...DEFAULT_KEYBINDINGS } }
+const FULL_DEFAULTS: EditorSettings & { keybindings: Record<ShortcutAction, string> } = { ...DEFAULT_SETTINGS, keybindings: { ...DEFAULT_KEYBINDINGS } as Record<ShortcutAction, string> }
 
 const AI_PROVIDERS = [
   { label: 'OpenAI', url: 'https://api.openai.com/v1' },

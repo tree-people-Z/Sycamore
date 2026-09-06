@@ -14,6 +14,8 @@ export function MathInlineView({ node, editor, getPos }: NodeViewProps) {
       setError(false)
     } catch {
       setError(true)
+      // katex.render 抛错前不会清空容器，需手动移除上一次的渲染残影
+      if (ref.current) ref.current.textContent = ''
     }
   }, [tex])
 

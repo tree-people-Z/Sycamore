@@ -22,7 +22,8 @@ function MermaidDiagramView({ node, updateAttributes }: NodeViewProps) {
     }
     setError(null)
     try {
-      mermaid.parse(code)
+      // mermaid 11 的 parse 返回 Promise，非法语法会 reject——吞掉由 render 统一呈现错误
+      await mermaid.parse(code).catch(() => null)
       const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
       const { svg: renderedSvg } = await mermaid.render(id, code)
       setSvg(renderedSvg)
@@ -33,11 +34,7 @@ function MermaidDiagramView({ node, updateAttributes }: NodeViewProps) {
     }
   }, [code])
 
-  useEffect(() => { renderDiagram() }, [renderDiagram])
-
-  useEffect(() => {
-    if (!isEditing) renderDiagram()
-  }, [isEditing, renderDiagram])
+  useEffect(() => { renderDiagram() }, [renderDiagram, isEditing])
 
   useEffect(() => {
     const detected = detectDiagramType(code)

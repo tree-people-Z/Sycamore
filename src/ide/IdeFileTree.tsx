@@ -27,6 +27,7 @@ function IdeInputDialog({ title, defaultValue, onSubmit, onClose }: {
   onClose: () => void
 }) {
   const [value, setValue] = useState(defaultValue ?? '')
+  const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
   useEffect(() => { inputRef.current?.focus(); inputRef.current?.select() }, [])
@@ -42,14 +43,14 @@ function IdeInputDialog({ title, defaultValue, onSubmit, onClose }: {
         <input ref={inputRef} type="text" value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => {
-            if (e.key === 'Enter' && value.trim()) { onSubmit(value.trim()) }
+            if (e.key === 'Enter' && value.trim() && !submitting) { setSubmitting(true); onSubmit(value.trim()) }
             if (e.key === 'Escape') onClose()
           }}
           className="w-full h-9 px-3 text-xs bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg outline-none text-[var(--color-text)] focus:border-[var(--color-accent)] transition-colors" />
         <div className="flex justify-end gap-2 mt-3">
           <button onClick={onClose}
             className="px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">取消</button>
-          <button onClick={() => { if (value.trim()) onSubmit(value.trim()) }} disabled={!value.trim()}
+          <button onClick={() => { if (value.trim() && !submitting) { setSubmitting(true); onSubmit(value.trim()) } }} disabled={!value.trim() || submitting}
             className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-accent)] text-white hover:opacity-80 disabled:opacity-40 transition-opacity">确定</button>
         </div>
       </div>

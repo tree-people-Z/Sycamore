@@ -1,4 +1,7 @@
 export function extractFileName(filePath: string, stripExt = true): string {
   const name = filePath.replace(/.*[/\\]/, '')
-  return stripExt ? name.replace(/\.\w+$/, '') : name
+  if (!stripExt) return name
+  const stripped = name.replace(/\.\w+$/, '')
+  // '.gitignore' 这类无基名的文件剥扩展名会得到空串，保留原名
+  return stripped || name
 }

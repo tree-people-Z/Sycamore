@@ -54,4 +54,5 @@ export interface ElectronAPI {
   showImportFileDialog(): Promise<string[]>
   checkForUpdates(): Promise<UpdateInfo>
   onMaximizeChange(callback: (maximized: boolean) => void): () => void
+  updateKeybindings(keybindings?: Record<string, string>): void
 }

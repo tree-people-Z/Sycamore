@@ -28,6 +28,7 @@ import { convertMarkdownToJSON } from './utils/markdown-convert'
 import { extractFileName } from './utils/path'
 import { on, emit } from './utils/emitter'
 import { showInputDialog } from './utils/input-dialog'
+import { DEFAULT_KEYBINDINGS } from './constants'
 
 function App() {
   const { toasts, addToast, removeToast } = useToast()
@@ -82,7 +83,10 @@ function App() {
       }
     }
     document.addEventListener('mouseout', handle)
-    return () => document.removeEventListener('mouseout', handle)
+    return () => {
+      document.removeEventListener('mouseout', handle)
+      if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current)
+    }
   }, [ui.sidebarPinned, setSidebarVisible])
 
   useEffect(() => {
@@ -202,35 +206,35 @@ function App() {
     await editorRef.current?.saveFile()
   }, [])
 
-  useEffect(() => {
-    const cleanup = window.electronAPI?.onMenuAction(async (action) => {
-      // IDE 模式下菜单快捷键让路：保存转发给 IDE，其余编辑类操作忽略
-      if (viewModeRef.current === 'ide') {
-        if (action === 'save') emit('ide-save')
-        else if (action === 'exit') await handleExit()
-        return
-      }
-      const editor = editorRef.current
-      if (!editor) return
-      switch (action) {
-        case 'new': setShowWelcome(false); await editor.newFile(); break
-        case 'open': setShowWelcome(false); await editor.openFile(); break
-        case 'save': setShowWelcome(false); await editor.saveFile(); break
-        case 'save-as': await editor.saveAs(); handleRefreshFolder(); break
-        case 'exit': await handleExit(); break
-        case 'undo': editor.undo(); break
-        case 'redo': editor.redo(); break
-        case 'cut': editor.focus(); try { document.execCommand('cut') } catch { /* ignore */ } break
-        case 'copy': try { const t = editor.getText(); if (t) navigator.clipboard.writeText(t) } catch { /* ignore */ } break
-        case 'paste': editor.focus(); break
-        case 'export-html': await handleExportHtml(); break
-        case 'export-pdf': await handleExportPdf(); break
-        case 'export-markdown': await handleExportMarkdown(); break
-        case 'import-markdown': await handleImportMarkdown(); break
-      }
-    })
-    return () => cleanup?.()
+  const runMenuAction = useCallback(async (action: string) => {
+    // IDE 模式下菜单快捷键让路：保存转发给 IDE，其余编辑类操作忽略
+    if (viewModeRef.current === 'ide') {
+      if (action === 'save') emit('ide-save')
+      else if (action === 'exit') await handleExit()
+      return
+    }
+    const editor = editorRef.current
+    if (!editor) return
+    switch (action) {
+      case 'new': setShowWelcome(false); await editor.newFile(); break
+      case 'open': setShowWelcome(false); await editor.openFile(); break
+      case 'save': setShowWelcome(false); await editor.saveFile(); break
+      case 'save-as': await editor.saveAs(); handleRefreshFolder(); break
+      case 'exit': await handleExit(); break
+      case 'undo': editor.undo(); break
+      case 'redo': editor.redo(); break
+      case 'export-html': await handleExportHtml(); break
+      case 'export-pdf': await handleExportPdf(); break
+      case 'export-markdown': await handleExportMarkdown(); break
+      case 'import-markdown': await handleImportMarkdown(); break
+    }
   }, [handleExit, handleExportHtml, handleExportPdf, handleExportMarkdown, handleImportMarkdown, handleRefreshFolder, setShowWelcome])
+
+  useEffect(() => {
+    const cleanup = window.electronAPI?.onMenuAction(runMenuAction)
+    return () => cleanup?.()
+  }, [runMenuAction])
+
 
   useEffect(() => {
     if (!settings.autoCheckUpdate) return
@@ -293,6 +297,47 @@ function App() {
     if (type === 'math') { setShowFormulaDialog(true); return }
     editor.insertBlock(type)
   }, [setShowFormulaDialog])
+
+  // 自定义快捷键：菜单不再注册 accelerator（会拦截按键），
+  // 统一由渲染层 keydown 匹配 settings.keybindings 后分发
+  const keybindingsRef = useRef(settings.keybindings)
+  keybindingsRef.current = settings.keybindings
+
+  useEffect(() => {
+    window.electronAPI?.updateKeybindings?.(settings.keybindings)
+  }, [settings.keybindings])
+
+  useEffect(() => {
+    const isMac = navigator.platform.includes('Mac')
+    const handler = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
+      const mod = isMac ? (e.metaKey ? 'Cmd' : null) : (e.ctrlKey ? 'Ctrl' : null)
+      if (!mod) return
+      const parts = [mod]
+      if (e.shiftKey) parts.push('Shift')
+      if (e.altKey) parts.push('Alt')
+      const keyName = e.key === ' ' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key
+      const sig = `${parts.join('+')}+${keyName}`
+      const kb = { ...DEFAULT_KEYBINDINGS, ...(keybindingsRef.current || {}) }
+      const action = (Object.entries(kb) as [string, string][]).find(([, b]) =>
+        b.replace('CmdOrCtrl', isMac ? 'Cmd' : 'Ctrl') === sig)?.[0]
+      if (!action) return
+      e.preventDefault()
+      e.stopPropagation()
+      const menuMap: Record<string, string> = {
+        save: 'save', newFile: 'new', openFile: 'open', saveAs: 'save-as',
+        undo: 'undo', redo: 'redo', exportHtml: 'export-html', exportPdf: 'export-pdf',
+      }
+      if (menuMap[action]) { void runMenuAction(menuMap[action]); return }
+      if (viewModeRef.current !== 'note') return
+      if (action === 'link') { handleFormat('link'); return }
+      if (['bold', 'italic', 'strikethrough', 'highlight', 'code'].includes(action)) {
+        editorRef.current?.formatInline(action as InlineFormatType)
+      }
+    }
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
+  }, [runMenuAction, handleFormat])
 
   const handleFormulaInsert = useCallback((expression: string, displayMode: boolean) => {
     editorRef.current?.insertText({
