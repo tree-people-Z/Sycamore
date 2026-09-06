@@ -6,7 +6,8 @@
 
 # **Sycamore**
 
-**桌面富文本 & Markdown 编辑器** · Electron + React + Tiptap
+**桌面笔记 & 代码编辑器** — 富文本 · Markdown · IDE 模式 · AI 助手
+Electron + React + Tiptap + CodeMirror
 
 [![Version](https://img.shields.io/github/v/release/tree-people-Z/Sycamore?style=flat-square&label=版本&color=c4956a)](https://github.com/tree-people-Z/Sycamore/releases)
 [![License](https://img.shields.io/badge/许可证-MIT-7a9e6b?style=flat-square)](LICENSE)
@@ -125,6 +126,17 @@
 - **图片 & 链接**
 - **专注模式**
 - **自动保存**
+
+</td>
+<td>
+
+### 🧠 IDE 模式
+- **CodeMirror 6** 内核
+- **文件树** — 浏览/打开代码文件
+- **多标签** — 独立撤销历史
+- **搜索替换** — Ctrl+F
+- **语法高亮** — TS/JS/Python 等 20+ 语言
+- **文件管理** — 新建/重命名/删除
 
 </td>
 </tr>
@@ -301,6 +313,7 @@ Sycamore/
 │   │   ├── Editor.tsx         #   编辑器主组件
 │   │   ├── extensions/        #   Tiptap 扩展
 │   │   └── MathBlockView.tsx
+│   ├── ide/                   # IDE 模式（CodeMirror 文件树/多标签）
 │   ├── hooks/                 # React Hooks
 │   │   ├── useTheme.ts
 │   │   ├── useFileSystem.ts
@@ -346,6 +359,7 @@ Sycamore/
 |------|------|
 | **框架** | Electron 33 + React 18 + TypeScript 5 |
 | **编辑器** | Tiptap 3 (ProseMirror) |
+| **代码模式** | CodeMirror 6 |
 | **构建** | Vite 5 + vite-plugin-electron |
 | **样式** | Tailwind CSS 3 + PostCSS |
 | **图标** | Lucide React |
